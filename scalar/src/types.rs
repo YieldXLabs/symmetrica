@@ -19,7 +19,6 @@ pub struct TradingFloat(f64);
 impl TradingFloat {
     pub const ZERO: Self = TradingFloat(0.0);
     pub const ONE: Self = TradingFloat(1.0);
-    pub const EPSILON: Self = TradingFloat(0.00000001);
     pub const PI: Self = TradingFloat(std::f64::consts::PI);
     pub const E: Self = TradingFloat(std::f64::consts::E);
 
