@@ -1,4 +1,4 @@
-use crate::traits::{AdditiveGroup, Discretization, Field, One, OrderedField, Real, Ring, Zero};
+use super::traits::{AdditiveGroup, Discretization, Field, One, OrderedField, Real, Ring, Zero};
 use std::cmp::Ordering;
 use std::fmt::{self, Display};
 use std::hash::{Hash, Hasher};
