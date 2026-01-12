@@ -1,5 +1,7 @@
-pub mod traits;
+pub mod index;
 pub mod scalar;
+pub mod traits;
 
-pub use traits::*;
+pub use index::*;
 pub use scalar::TradingFloat;
+pub use traits::*;
