@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["scalar"]
+members = ["algebra"]
 
 
 [workspace.package]
