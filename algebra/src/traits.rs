@@ -65,3 +65,11 @@ pub trait Discretization: Sized {
 pub trait VectorSpace<F: Field>: AdditiveGroup {
     fn scale(&self, scalar: F) -> Self;
 }
+
+pub trait InnerProductSpace<F: Real>: VectorSpace<F> {
+    fn inner(&self, other: &Self) -> F;
+
+    fn norm(&self) -> F {
+        self.inner(self).sqrt()
+    }
+}
