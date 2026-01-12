@@ -12,8 +12,8 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 /// - Hashing is bitwise with canonicalized zero
 /// - No epsilon comparisons are used
 /// - Default is 0.0
+#[repr(C)]
 #[derive(Copy, Clone, Debug)]
-#[repr(transparent)]
 pub struct TradingFloat(f64);
 
 impl TradingFloat {

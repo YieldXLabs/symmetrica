@@ -6,3 +6,7 @@ members = ["scalar"]
 [workspace.package]
 authors = ["Melnik <siarhei_melnik@proton.me>"]
 edition = "2024"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
