@@ -61,3 +61,7 @@ pub trait Discretization: Sized {
     fn ceil(self) -> Self;
     fn round(self) -> Self;
 }
+
+pub trait VectorSpace<F: Field>: AdditiveGroup {
+    fn scale(&self, scalar: F) -> Self;
+}
