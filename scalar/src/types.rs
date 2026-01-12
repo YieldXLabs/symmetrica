@@ -1,4 +1,4 @@
-use crate::traits::{Discretization, Field, OrderedField, Real};
+use crate::traits::{AdditiveGroup, Discretization, Field, One, OrderedField, Real, Ring, Zero};
 use std::cmp::Ordering;
 use std::fmt::{self, Display};
 use std::hash::{Hash, Hasher};
@@ -176,16 +176,23 @@ impl Product for TradingFloat {
     }
 }
 
-impl Field for TradingFloat {
+impl Zero for TradingFloat {
     #[inline]
     fn zero() -> Self {
-        TradingFloat::ZERO
+        Self::ZERO
     }
+}
+impl One for TradingFloat {
     #[inline]
     fn one() -> Self {
-        TradingFloat::ONE
+        Self::ONE
     }
+}
 
+impl AdditiveGroup for TradingFloat {}
+impl Ring for TradingFloat {}
+
+impl Field for TradingFloat {
     #[inline]
     fn recip(self) -> Self {
         debug_assert!(

@@ -3,27 +3,40 @@ use std::fmt::{Debug, Display};
 use std::iter::{Product, Sum};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-// Algebraic field
-pub trait Field:
-    Copy
-    + Clone
+// 0. Identity
+// The additive identity (0)
+pub trait Zero {
+    fn zero() -> Self;
+}
+// The multiplicative identity (1)
+pub trait One {
+    fn one() -> Self;
+}
+
+// 1. Additive Group (Abelian Group)
+pub trait AdditiveGroup:
+    Clone
     + PartialEq
     + Debug
     + Display
     + Default
+    + Zero
     + Add<Output = Self>
     + Sub<Output = Self>
-    + Mul<Output = Self>
-    + Div<Output = Self>
     + Neg<Output = Self>
     + Sum
-    + Product
 {
-    fn zero() -> Self;
-    fn one() -> Self;
+}
+
+// 2. Ring
+pub trait Ring: AdditiveGroup + One + Mul<Output = Self> + Product {}
+
+// 3. Field
+pub trait Field: Ring + Copy + Div<Output = Self> {
     fn recip(self) -> Self;
 }
 
+// Extensions: Ordering and Real Analysis
 pub trait OrderedField: Field + PartialOrd + Ord {
     fn abs(self) -> Self;
     fn signum(self) -> Self;
