@@ -18,7 +18,6 @@ pub trait AdditiveGroup:
     Clone
     + PartialEq
     + Debug
-    + Display
     + Default
     + Zero
     + Add<Output = Self>
