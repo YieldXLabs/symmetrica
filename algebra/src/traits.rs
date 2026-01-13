@@ -1,5 +1,5 @@
 use std::cmp::Ord;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 use std::iter::{Product, Sum};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
@@ -59,25 +59,4 @@ pub trait Discretization: Sized {
     fn floor(self) -> Self;
     fn ceil(self) -> Self;
     fn round(self) -> Self;
-}
-
-pub trait VectorSpace<F: Field>: AdditiveGroup {
-    fn scale(&self, scalar: F) -> Self;
-}
-
-pub trait InnerProductSpace<F: Real>: VectorSpace<F> {
-    fn inner(&self, other: &Self) -> F;
-
-    fn norm(&self) -> F {
-        self.inner(self).sqrt()
-    }
-}
-
-pub trait LinearMap<V, W> {
-    fn apply(&self, v: &V) -> W;
-}
-
-pub trait AdjointLinearMap<V, W>: LinearMap<V, W> {
-    type Adjoint: LinearMap<W, V>;
-    fn adjoint(&self) -> Self::Adjoint;
 }
