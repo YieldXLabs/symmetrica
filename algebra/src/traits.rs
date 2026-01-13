@@ -72,3 +72,12 @@ pub trait InnerProductSpace<F: Real>: VectorSpace<F> {
         self.inner(self).sqrt()
     }
 }
+
+pub trait LinearMap<V, W> {
+    fn apply(&self, v: &V) -> W;
+}
+
+pub trait AdjointLinearMap<V, W>: LinearMap<V, W> {
+    type Adjoint: LinearMap<W, V>;
+    fn adjoint(&self) -> Self::Adjoint;
+}
