@@ -1,1 +1,1 @@
-# A compositional, category-theoretic control system for risk-bounded trading.
+# Typed risk and execution engine.
