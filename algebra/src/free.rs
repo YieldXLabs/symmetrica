@@ -1,11 +1,16 @@
 use super::Real;
 
+pub trait Lift<'a, F: Real> {
+    type Output;
+
+    fn lift(self) -> Self::Output;
+}
+
 // Leaf node: reference to slice of data
 #[derive(Debug, Clone, Copy)]
 pub struct Pure<'a, F: Real> {
     pub data: &'a [F],
 }
-
 // Linear operators
 #[derive(Debug, Clone, Copy)]
 pub struct Add<L, R> {
