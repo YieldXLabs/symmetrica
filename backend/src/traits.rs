@@ -1,10 +1,19 @@
-use algebra::{Op, Real};
 use std::fmt::Debug;
+use algebra::Real;
+
+pub trait Evaluator<F: Real, B: Backend<F>> {
+    type Output;
+
+    fn collect() -> B::Repr;
+}
 
 pub trait Backend<F: Real> {
     type Repr;
 
-    fn eval(&mut self, op: Op<F, Self::Repr>) -> Self::Repr;
+    fn compute<Op>(op: Op) -> Self::Repr
+    
+    where
+        Op: Evaluator<F, Self>, Self: Sized;
 }
 
 pub trait Storage<F>: Debug + Clone + Send + Sync {
