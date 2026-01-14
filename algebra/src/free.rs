@@ -23,6 +23,12 @@ impl<'a, F: Real> Lift<'a, F> for &'a [F] {
 #[derive(Debug, Clone, Copy)]
 pub struct ConstExpr<F>(pub F);
 
+#[derive(Debug, Clone, Copy)]
+pub struct LetExpr<Val, Body> {
+    pub value: Val,
+    pub body: Body,
+}
+
 // Linear operators
 #[derive(Debug, Clone, Copy)]
 pub struct AddExpr<L, R> {
