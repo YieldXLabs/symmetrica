@@ -13,7 +13,12 @@ pub struct TensorValue<S, F: Real> {
 impl<S, F: Real> TensorValue<S, F> {
     pub fn new(storage: S, shape: Vec<usize>) -> Self {
         let strides = Self::compute_strides(&shape);
-        Self { storage, shape, strides, _marker: PhantomData }
+        Self {
+            storage,
+            shape,
+            strides,
+            _marker: PhantomData,
+        }
     }
 
     fn compute_strides(shape: &[usize]) -> Vec<usize> {
@@ -35,12 +40,15 @@ pub struct Tensor<'a, F: Real, Expr> {
 
 impl<'a, F: Real, Expr> Tensor<'a, F, Expr> {
     pub fn new(expr: Expr) -> Self {
-        Self { expr, _marker: PhantomData }
+        Self {
+            expr,
+            _marker: PhantomData,
+        }
     }
 
     pub fn collect<B: Backend<F>>(&self, backend: &mut B) -> TensorValue<B::Repr, F>
     where
-        Expr: Evaluator<F, B>, 
+        Expr: Evaluator<F, B>,
     {
         let (storage, shape) = self.expr.eval(backend);
 

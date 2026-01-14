@@ -1,4 +1,4 @@
-use algebra::{Real, Shape};
+use algebra::Real;
 use std::fmt::Debug;
 
 pub trait Storage<F>: Debug + Clone + Send + Sync {
