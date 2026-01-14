@@ -1,4 +1,4 @@
-use algebra::{Lift, Real};
+use algebra::{Lift, PureExpr, Real};
 use backend::{Backend, Evaluator};
 use std::marker::PhantomData;
 
@@ -32,26 +32,65 @@ impl<S, F: Real> TensorValue<S, F> {
     }
 }
 
-// 2. Symbolic
-#[derive(Debug, Clone, Copy)]
-pub struct Tensor<'a, F: Real, Expr> {
-    pub(crate) expr: Expr,
+// 2. Symbolic / hybrid tensor expression
+#[derive(Debug, Clone)]
+pub enum TensorExpr<'a, F: Real, Expr> {
+    Borrowed(&'a [F]),
+    Owned(Vec<F>),
+    Pure(PureExpr<'a, F>),
+    Algebraic(Expr),
+}
+
+// 3. Main Tensor type
+#[derive(Debug, Clone)]
+pub struct Tensor<'a, F: Real, Expr = ()> {
+    expr: TensorExpr<'a, F, Expr>,
     _marker: PhantomData<&'a F>,
 }
 
 impl<'a, F: Real> Tensor<'a, F, ()> {
-    pub fn from<L>(input: L) -> Tensor<'a, F, L::Output>
+    /// Borrowed slice
+    pub fn from_slice(slice: &'a [F]) -> Self {
+        Self {
+            expr: TensorExpr::Borrowed(slice),
+            _marker: PhantomData,
+        }
+    }
+
+    /// Owned vector
+    pub fn from_vec(vec: Vec<F>) -> Self {
+        Self {
+            expr: TensorExpr::Owned(vec),
+            _marker: PhantomData,
+        }
+    }
+
+    /// Lift symbolic / algebraic type
+    pub fn from_lift<L>(input: L) -> Tensor<'a, F, L::Output>
     where
         L: Lift<'a, F>,
     {
-        Tensor::new(input.lift())
+        Tensor {
+            expr: TensorExpr::Algebraic(input.lift()),
+            _marker: PhantomData,
+        }
+    }
+
+    /// Try to get a slice if available (borrowed or owned)
+    pub fn as_slice(&self) -> Option<&[F]> {
+        match &self.expr {
+            TensorExpr::Borrowed(s) => Some(s),
+            TensorExpr::Owned(v) => Some(&v[..]),
+            TensorExpr::Pure(p) => Some(p.data),
+            TensorExpr::Algebraic(_) => None,
+        }
     }
 }
 
 impl<'a, F: Real, Expr> Tensor<'a, F, Expr> {
     pub fn new(expr: Expr) -> Self {
         Self {
-            expr,
+            expr: TensorExpr::Algebraic(expr),
             _marker: PhantomData,
         }
     }
@@ -60,24 +99,44 @@ impl<'a, F: Real, Expr> Tensor<'a, F, Expr> {
     where
         Expr: Evaluator<F, B>,
     {
-        let (storage, shape) = self.expr.eval(backend);
-
-        TensorValue::new(storage, shape)
+        if let TensorExpr::Algebraic(e) = &self.expr {
+            let (storage, shape) = e.eval(backend);
+            TensorValue::new(storage, shape)
+        } else {
+            panic!("collect() only works on symbolic / algebraic tensors")
+        }
     }
+}
+
+// Macro for owned tensors
+#[macro_export]
+macro_rules! tensor {
+    ($($x:expr),* $(,)?) => {{
+        let data = vec![$(
+            TradingFloat::try_from($x).expect("Invalid float")
+        ),*];
+        Tensor::from_vec(data)
+    }};
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use algebra::TradingFloat;
 
     #[test]
-    fn test_scale_ops() {
-        let data: [TradingFloat; 3] = [2.0, 3.0, 5.0].map(|x| TradingFloat::try_from(x).unwrap());
+    fn test_tensor_expr() {
+        let a = tensor![2.0, 3.0, 5.0];
+        let arr = [
+            TradingFloat::try_from(2.0).unwrap(),
+            TradingFloat::try_from(5.0).unwrap(),
+        ]; // owned
+        let b = Tensor::from_slice(&arr[..]); // borrowed
 
-        let a = Tensor::from(&data[..]);
-
-        assert_eq!(0, 0);
+        assert_eq!(
+            a.as_slice().unwrap(),
+            &[2.0, 3.0, 5.0].map(TradingFloat::new)
+        );
+        assert_eq!(b.as_slice().unwrap(), &[1.0, 2.0].map(TradingFloat::new));
     }
 }
