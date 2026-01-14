@@ -33,6 +33,7 @@ impl<S, F: Real> TensorValue<S, F> {
 }
 
 // 2. Symbolic
+#[derive(Debug, Clone, Copy)]
 pub struct Tensor<'a, F: Real, Expr> {
     pub(crate) expr: Expr,
     _marker: PhantomData<&'a F>,
