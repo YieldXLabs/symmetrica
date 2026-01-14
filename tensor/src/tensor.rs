@@ -1,4 +1,4 @@
-use algebra::Real;
+use algebra::{Lift, Real};
 use backend::{Backend, Evaluator};
 use std::marker::PhantomData;
 
@@ -39,6 +39,15 @@ pub struct Tensor<'a, F: Real, Expr> {
     _marker: PhantomData<&'a F>,
 }
 
+impl<'a, F: Real> Tensor<'a, F, ()> {
+    pub fn from<L>(input: L) -> Tensor<'a, F, L::Output>
+    where
+        L: Lift<'a, F>,
+    {
+        Tensor::new(input.lift())
+    }
+}
+
 impl<'a, F: Real, Expr> Tensor<'a, F, Expr> {
     pub fn new(expr: Expr) -> Self {
         Self {
@@ -54,5 +63,21 @@ impl<'a, F: Real, Expr> Tensor<'a, F, Expr> {
         let (storage, shape) = self.expr.eval(backend);
 
         TensorValue::new(storage, shape)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use algebra::TradingFloat;
+
+    #[test]
+    fn test_scale_ops() {
+        let data: [TradingFloat; 3] = [2.0, 3.0, 5.0].map(|x| TradingFloat::try_from(x).unwrap());
+
+        let a = Tensor::from(&data[..]);
+
+        assert_eq!(0, 0);
     }
 }
