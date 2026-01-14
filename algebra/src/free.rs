@@ -8,96 +8,99 @@ pub trait Lift<'a, F: Real> {
 
 // Leaf node: reference to slice of data
 #[derive(Debug, Clone, Copy)]
-pub struct Pure<'a, F: Real> {
+pub struct PureExpr<'a, F: Real> {
     pub data: &'a [F],
 }
 
 impl<'a, F: Real> Lift<'a, F> for &'a [F] {
-    type Output = Pure<'a, F>;
+    type Output = PureExpr<'a, F>;
 
     fn lift(self) -> Self::Output {
-        Pure { data: self }
+        PureExpr { data: self }
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct ConstExpr<F>(pub F);
+
 // Linear operators
 #[derive(Debug, Clone, Copy)]
-pub struct Add<L, R> {
+pub struct AddExpr<L, R> {
     pub left: L,
     pub right: R,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Sub<L, R> {
+pub struct SubExpr<L, R> {
     pub left: L,
     pub right: R,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Mul<L, R> {
+pub struct MulExpr<L, R> {
     pub left: L,
     pub right: R,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Div<L, R> {
+pub struct DivExpr<L, R> {
     pub left: L,
     pub right: R,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Scale<Op, F> {
+pub struct ScaleExpr<Op, F> {
     pub op: Op,
     pub factor: F,
 }
 
 // Nonlinear operators
 #[derive(Debug, Clone, Copy)]
-pub struct Abs<Op> {
+pub struct AbsExpr<Op> {
     pub op: Op,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Exp<Op> {
+pub struct ExpExpr<Op> {
     pub op: Op,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Log<Op> {
+pub struct LogExpr<Op> {
     pub op: Op,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Sqrt<Op> {
+pub struct SqrtExpr<Op> {
     pub op: Op,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Pow<Op, F> {
+pub struct PowExpr<Op, F> {
     pub op: Op,
     pub exp: F,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Sin<Op> {
+pub struct SinExpr<Op> {
     pub op: Op,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Cos<Op> {
+pub struct CosExpr<Op> {
     pub op: Op,
 }
 
 // Time series
 #[derive(Debug, Clone, Copy)]
-pub struct Lag<Op> {
+pub struct LagExpr<Op> {
     pub op: Op,
     pub n: usize,
 }
 
 // Statistical
 #[derive(Debug, Clone, Copy)]
-pub struct Gaussian<Op, F> {
+pub struct GaussianExpr<Op, F> {
     pub x: Op,
     pub mean: F,
     pub sigma: F,
@@ -105,7 +108,7 @@ pub struct Gaussian<Op, F> {
 
 // Control / branching
 #[derive(Debug, Clone, Copy)]
-pub struct If<Cond, Then, Else> {
+pub struct IfExpr<Cond, Then, Else> {
     pub cond: Cond,
     pub then_: Then,
     pub else_: Else,
@@ -113,38 +116,38 @@ pub struct If<Cond, Then, Else> {
 
 // Comparison
 #[derive(Debug, Clone, Copy)]
-pub struct Min<L, R> {
+pub struct MinExpr<L, R> {
     pub left: L,
     pub right: R,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Max<L, R> {
+pub struct MaxExpr<L, R> {
     pub left: L,
     pub right: R,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Clamp<Op, F> {
+pub struct ClampExpr<Op, F> {
     pub op: Op,
     pub lo: F,
     pub hi: F,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Lt<L, R> {
+pub struct LtExpr<L, R> {
     pub left: L,
     pub right: R,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Gt<L, R> {
+pub struct GtExpr<L, R> {
     pub left: L,
     pub right: R,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Eq<L, R> {
+pub struct EqExpr<L, R> {
     pub left: L,
     pub right: R,
 }
