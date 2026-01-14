@@ -36,6 +36,10 @@ pub trait Backend<F: Real> {
     {
         expr.eval(self)
     }
+
+    fn stream<K>(&mut self, input: &Self::Repr, kernel: &K) -> Self::Repr
+    where
+        K: StreamKernel<F>;
 }
 
 pub trait Evaluator<F: Real, B: Backend<F> + ?Sized> {
