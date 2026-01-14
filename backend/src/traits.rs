@@ -21,14 +21,6 @@ pub trait Backend<F: Real> {
 
     fn pure(&mut self, data: &[F]) -> Self::Repr;
 
-    fn binary<K>(&mut self, lhs: &Self::Repr, rhs: &Self::Repr) -> Self::Repr
-    where
-        K: BinaryKernel<Self::Repr>;
-
-    fn unary<K>(&mut self, inp: &Self::Repr) -> Self::Repr
-    where
-        K: UnaryKernel<Self::Repr>;
-
     fn compute<E>(&mut self, expr: &E) -> Self::Repr
     where
         E: Evaluator<F, Self>,
