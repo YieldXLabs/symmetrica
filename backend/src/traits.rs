@@ -16,6 +16,14 @@ pub trait BinaryKernel<S> {
     fn apply(lhs: &S, rhs: &S, out: &mut S);
 }
 
+pub trait StreamKernel<F: Real> {
+    type State;
+
+    fn init(&self) -> Self::State;
+
+    fn step(&self, state: &mut Self::State, input: F) -> F;
+}
+
 pub trait Backend<F: Real> {
     type Repr: Storage<F>;
 
