@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["algebra", "backend"]
+members = ["algebra", "backend", "tensor"]
 
 
 [workspace.package]

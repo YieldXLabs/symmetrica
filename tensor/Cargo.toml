@@ -1,0 +1,9 @@
+[package]
+name = "tensor"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+algebra = {path = "../algebra"}
+backend = {path = "../backend"}

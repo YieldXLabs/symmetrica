@@ -1,4 +1,4 @@
-use algebra::Real;
+use algebra::{Real, Shape};
 use std::fmt::Debug;
 
 pub trait Storage<F>: Debug + Clone + Send + Sync {
@@ -29,7 +29,7 @@ pub trait Backend<F: Real> {
 
     fn pure(&mut self, data: &[F]) -> Self::Repr;
 
-    fn compute<E>(&mut self, expr: &E) -> Self::Repr
+    fn compute<E>(&mut self, expr: &E) -> (Self::Repr, Vec<usize>)
     where
         E: Evaluator<F, Self>,
         Self: Sized,
@@ -43,5 +43,5 @@ pub trait Backend<F: Real> {
 }
 
 pub trait Evaluator<F: Real, B: Backend<F> + ?Sized> {
-    fn eval(&self, backend: &mut B) -> B::Repr;
+    fn eval(&self, backend: &mut B) -> (B::Repr, Vec<usize>);
 }
