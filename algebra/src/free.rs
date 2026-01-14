@@ -11,6 +11,15 @@ pub trait Lift<'a, F: Real> {
 pub struct Pure<'a, F: Real> {
     pub data: &'a [F],
 }
+
+impl<'a, F: Real> Lift<'a, F> for &'a [F] {
+    type Output = Pure<'a, F>;
+
+    fn lift(self) -> Self::Output {
+        Pure { data: self }
+    }
+}
+
 // Linear operators
 #[derive(Debug, Clone, Copy)]
 pub struct Add<L, R> {
