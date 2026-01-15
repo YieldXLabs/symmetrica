@@ -142,15 +142,49 @@ impl<'a, F: Real, Sh: Shape, const R: usize, Expr> Tensor<'a, F, Sh, R, Expr> {
     }
 }
 
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __count {
+    () => (0usize);
+    ($head:expr $(, $tail:expr)*) => (1usize + $crate::__count!($($tail),*));
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __flatten_1d {
+    ($vec:ident; $($x:expr),* $(,)?) => {{
+        $(
+            $vec.push(TradingFloat::try_from($x).expect("Invalid float"));
+        )*
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __flatten_2d {
+    ($vec:ident; $([$($x:expr),* $(,)?]),* $(,)?) => {{
+        $(
+            $crate::__flatten_1d!($vec; $($x),*);
+        )*
+    }};
+}
+
 #[macro_export]
 macro_rules! tensor {
-    // Provide data + shape explicitly
-    ($shape:expr; $($x:expr),* $(,)?) => {{
-        let data = vec![
-            $(TradingFloat::try_from($x).expect("Invalid float")),*
-        ];
-        // Shape must be a fixed-size array matching R
-        Tensor::from_vec(data, $shape)
+    ($($x:expr),+ $(,)?) => {{
+        let mut data = Vec::new();
+        $crate::__flatten_1d!(data; $($x),*);
+        let shape = [$crate::__count!($($x),*)];
+        Tensor::from_vec(data, shape)
+    }};
+
+    ([$([$($x:expr),* $(,)?]),+ $(,)?]) => {{
+        let mut data = Vec::new();
+        $crate::__flatten_2d!(data; $([$($x),*]),*);
+        let rows = $crate::__count!($([$($x),*]),*);
+        let cols = $crate::__count!($($x),*);
+        let shape = [rows, cols];
+        Tensor::from_vec(data, shape)
     }};
 }
 
@@ -161,6 +195,6 @@ mod tests {
 
     #[test]
     fn test_tensor_expr() {
-        let a: Tensor<TradingFloat, (), 1> = tensor![[3]; 2.0, 3.0, 5.0];
+        let a: Tensor<TradingFloat, (), 1> = tensor![2.0, 3.0, 5.0];
     }
 }
