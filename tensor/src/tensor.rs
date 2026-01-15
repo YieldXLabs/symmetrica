@@ -91,6 +91,16 @@ impl<'a, F: Real, Sh: Shape, const R: usize> Tensor<'a, F, Sh, R, ()> {
             _marker: PhantomData,
         }
     }
+
+    pub fn from_expr<L>(input: L) -> Tensor<'a, F, Sh, R, L::Output>
+    where
+        L: Lift<'a, F>,
+    {
+        Tensor {
+            expr: TensorExpr::Algebraic(input.lift()),
+            _marker: PhantomData,
+        }
+    }
 }
 
 // ------------------------
