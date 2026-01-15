@@ -1,17 +1,21 @@
-use algebra::{Lift, PureExpr, Real};
+use algebra::{Lift, PureExpr, Real, Shape};
 use backend::{Backend, Evaluator};
+use std::convert::TryInto;
 use std::marker::PhantomData;
 
+// ------------------------
 // 1. Materialized Tensor Value
-pub struct TensorValue<S, F: Real> {
+// ------------------------
+#[derive(Debug, Clone)]
+pub struct TensorValue<S, F: Real, const R: usize> {
     pub storage: S,
-    pub shape: Vec<usize>,
-    pub strides: Vec<usize>,
+    pub shape: [usize; R],
+    pub strides: [usize; R],
     _marker: PhantomData<F>,
 }
 
-impl<S, F: Real> TensorValue<S, F> {
-    pub fn new(storage: S, shape: Vec<usize>) -> Self {
+impl<S, F: Real, const R: usize> TensorValue<S, F, R> {
+    pub fn new(storage: S, shape: [usize; R]) -> Self {
         let strides = Self::compute_strides(&shape);
         Self {
             storage,
@@ -21,10 +25,10 @@ impl<S, F: Real> TensorValue<S, F> {
         }
     }
 
-    fn compute_strides(shape: &[usize]) -> Vec<usize> {
-        let mut strides = vec![0; shape.len()];
+    fn compute_strides(shape: &[usize; R]) -> [usize; R] {
+        let mut strides = [0; R];
         let mut product = 1;
-        for i in (0..shape.len()).rev() {
+        for i in (0..R).rev() {
             strides[i] = product;
             product *= shape[i];
         }
@@ -32,80 +36,107 @@ impl<S, F: Real> TensorValue<S, F> {
     }
 }
 
+// ------------------------
 // 2. Symbolic / hybrid tensor expression
+// ------------------------
 #[derive(Debug, Clone)]
-pub enum TensorExpr<'a, F: Real, Expr> {
-    Pure(PureExpr<'a, F>),
-    Owned(Vec<F>),
+pub enum TensorExpr<'a, F: Real, Expr, const R: usize> {
+    Pure {
+        data: PureExpr<'a, F>,
+        shape: [usize; R],
+    },
+    Owned {
+        data: Vec<F>,
+        shape: [usize; R],
+    },
     Algebraic(Expr),
 }
 
+// ------------------------
+// 3. Main Tensor struct
+// ------------------------
 #[derive(Debug, Clone)]
-pub struct Tensor<'a, F: Real, Expr = ()> {
-    pub expr: TensorExpr<'a, F, Expr>,
+pub struct Tensor<'a, F: Real, Sh: Shape, const R: usize, Expr = ()> {
+    pub expr: TensorExpr<'a, F, Expr, R>,
+    _marker: PhantomData<Sh>,
 }
 
-impl<'a, F: Real> Tensor<'a, F, ()> {
-    pub fn from_vec(data: Vec<F>) -> Self {
+// ------------------------
+// 4. Tensor constructors
+// ------------------------
+impl<'a, F: Real, Sh: Shape, const R: usize> Tensor<'a, F, Sh, R, ()> {
+    pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Self {
+        assert_eq!(
+            data.len(),
+            shape.iter().product::<usize>(),
+            "Data length mismatch"
+        );
         Tensor {
-            expr: TensorExpr::Owned(data),
+            expr: TensorExpr::Owned { data, shape },
+            _marker: PhantomData,
         }
     }
 
-    pub fn from_slice(data: &'a [F]) -> Self {
+    pub fn from_slice(data: &'a [F], shape: [usize; R]) -> Self {
+        assert_eq!(
+            data.len(),
+            shape.iter().product::<usize>(),
+            "Data length mismatch"
+        );
         Tensor {
-            expr: TensorExpr::Pure(data.lift()),
-        }
-    }
-
-    pub fn from_expr<L>(input: L) -> Tensor<'a, F, L::Output>
-    where
-        L: Lift<'a, F>,
-    {
-        Tensor {
-            expr: TensorExpr::Algebraic(input.lift()),
+            expr: TensorExpr::Pure {
+                data: data.lift(),
+                shape,
+            },
+            _marker: PhantomData,
         }
     }
 }
 
-// 3. Conversion into Tensor
-pub trait IntoTensor<'a, F: Real> {
+// ------------------------
+// 5. IntoTensor trait
+// ------------------------
+pub trait IntoTensor<'a, F: Real, Sh: Shape, const R: usize> {
     type Expr;
-    fn into_tensor(self) -> Tensor<'a, F, Self::Expr>;
+    fn into_tensor(self) -> Tensor<'a, F, Sh, R, Self::Expr>;
 }
 
-impl<'a, F: Real> IntoTensor<'a, F> for Vec<F> {
+impl<'a, F: Real, Sh: Shape, const R: usize> IntoTensor<'a, F, Sh, R> for Vec<F> {
     type Expr = ();
-    fn into_tensor(self) -> Tensor<'a, F, ()> {
-        Tensor::from_vec(self)
+    fn into_tensor(self) -> Tensor<'a, F, Sh, R, ()> {
+        Tensor::from_vec(self, [0; R]) // Shape must be provided manually
     }
 }
 
-impl<'a, F: Real> IntoTensor<'a, F> for &'a [F] {
+impl<'a, F: Real, Sh: Shape, const R: usize> IntoTensor<'a, F, Sh, R> for &'a [F] {
     type Expr = ();
-    fn into_tensor(self) -> Tensor<'a, F, ()> {
-        Tensor::from_slice(self)
+    fn into_tensor(self) -> Tensor<'a, F, Sh, R, ()> {
+        Tensor::from_slice(self, [0; R]) // Shape must be provided manually
     }
 }
 
-// 4. Evaluation of Tensor expressions
-impl<'a, F: Real, Expr> Tensor<'a, F, Expr> {
-    pub fn collect<B: Backend<F>>(&self, backend: &mut B) -> TensorValue<B::Repr, F>
+// ------------------------
+// 6. Collect method
+// ------------------------
+impl<'a, F: Real, Sh: Shape, const R: usize, Expr> Tensor<'a, F, Sh, R, Expr> {
+    pub fn collect<B: Backend<F>>(&self, backend: &mut B) -> TensorValue<B::Repr, F, R>
     where
         Expr: Evaluator<F, B>,
     {
         match &self.expr {
-            TensorExpr::Pure(p) => {
-                let repr = backend.pure(p.data);
-                TensorValue::new(repr, vec![p.data.len()])
+            TensorExpr::Pure { data, shape } => {
+                let repr = backend.pure(data.data);
+                TensorValue::new(repr, *shape)
             }
-            TensorExpr::Owned(v) => {
-                let repr = backend.pure(v.as_slice());
-                TensorValue::new(repr, vec![v.len()])
+            TensorExpr::Owned { data, shape } => {
+                let repr = backend.pure(data.as_slice());
+                TensorValue::new(repr, *shape)
             }
             TensorExpr::Algebraic(e) => {
-                let (storage, shape) = e.eval(backend);
-                TensorValue::new(storage, shape)
+                let (repr, shape_vec) = e.eval(backend);
+                let shape_arr: [usize; R] =
+                    shape_vec.try_into().expect("Evaluator returned wrong rank");
+                TensorValue::new(repr, shape_arr)
             }
         }
     }
@@ -113,11 +144,13 @@ impl<'a, F: Real, Expr> Tensor<'a, F, Expr> {
 
 #[macro_export]
 macro_rules! tensor {
-    ($($x:expr),* $(,)?) => {{
+    // Provide data + shape explicitly
+    ($shape:expr; $($x:expr),* $(,)?) => {{
         let data = vec![
             $(TradingFloat::try_from($x).expect("Invalid float")),*
         ];
-        Tensor::from_vec(data)
+        // Shape must be a fixed-size array matching R
+        Tensor::from_vec(data, $shape)
     }};
 }
 
@@ -128,11 +161,6 @@ mod tests {
 
     #[test]
     fn test_tensor_expr() {
-        let a = tensor![2.0, 3.0, 5.0];
-        let arr = vec![
-            TradingFloat::try_from(2.0).unwrap(),
-            TradingFloat::try_from(5.0).unwrap(),
-        ]; // owned
-        let b = Tensor::from_vec(arr); // borrowed
+        let a: Tensor<TradingFloat, (), 1> = tensor![[3]; 2.0, 3.0, 5.0];
     }
 }
