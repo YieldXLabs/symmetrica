@@ -118,10 +118,10 @@ impl<'a, F: Real, Sh: Shape, const N: usize> IntoTensor<'a, F, Sh, 1> for [F; N]
     }
 }
 
-impl<'a, F: Real, Sh: Shape, const R: usize> IntoTensor<'a, F, Sh, R> for &'a [F] {
+impl<'a, F: Real, Sh: Shape> IntoTensor<'a, F, Sh, 1> for &'a [F] {
     type Expr = ();
-    fn into_tensor(self) -> Tensor<'a, F, Sh, R, ()> {
-        Tensor::from_slice(self, [0; R]) // Shape must be provided manually
+    fn into_tensor(self) -> Tensor<'a, F, Sh, 1, ()> {
+        Tensor::from_slice(self, [self.len()])
     }
 }
 
