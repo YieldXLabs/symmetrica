@@ -196,5 +196,16 @@ mod tests {
     #[test]
     fn test_tensor_expr() {
         let a: Tensor<TradingFloat, (), 1> = tensor![2.0, 3.0, 5.0];
+
+        match &a.expr {
+            TensorExpr::Owned { data, shape } => {
+                assert_eq!(data.len(), 3, "Data length should be 3");
+                assert_eq!(shape, &[3], "Shape should be [3]");
+                assert_eq!(data[0], TradingFloat::try_from(2.0).unwrap());
+                assert_eq!(data[1], TradingFloat::try_from(3.0).unwrap());
+                assert_eq!(data[2], TradingFloat::try_from(5.0).unwrap());
+            }
+            _ => panic!("Expected Owned variant"),
+        }
     }
 }
