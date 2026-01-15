@@ -29,6 +29,12 @@ pub trait Backend<F: Real> {
 
     fn pure(&mut self, data: &[F]) -> Self::Repr;
 
+    fn unary<K: UnaryKernel<F>>(&mut self, input: &Self::Repr) -> Self::Repr;
+
+    fn binary<K: BinaryKernel<F>>(&mut self, lhs: &Self::Repr, rhs: &Self::Repr) -> Self::Repr;
+
+    fn stream<K: StreamKernel<F>>(&mut self, input: &Self::Repr, kernel: K) -> Self::Repr;
+
     fn compute<E>(&mut self, expr: &E) -> (Self::Repr, Vec<usize>)
     where
         E: Evaluator<F, Self>,
@@ -36,10 +42,6 @@ pub trait Backend<F: Real> {
     {
         expr.eval(self)
     }
-
-    fn stream<K>(&mut self, input: &Self::Repr, kernel: &K) -> Self::Repr
-    where
-        K: StreamKernel<F>;
 }
 
 pub trait Evaluator<F: Real, B: Backend<F> + ?Sized> {
