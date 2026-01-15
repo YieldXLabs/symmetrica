@@ -43,21 +43,18 @@ pub enum TensorExpr<'a, F: Real, Expr> {
 #[derive(Debug, Clone)]
 pub struct Tensor<'a, F: Real, Expr = ()> {
     pub expr: TensorExpr<'a, F, Expr>,
-    _marker: PhantomData<&'a F>,
 }
 
 impl<'a, F: Real> Tensor<'a, F, ()> {
     pub fn from_vec(data: Vec<F>) -> Self {
         Tensor {
             expr: TensorExpr::Owned(data),
-            _marker: PhantomData,
         }
     }
 
     pub fn from_slice(data: &'a [F]) -> Self {
         Tensor {
             expr: TensorExpr::Pure(data.lift()),
-            _marker: PhantomData,
         }
     }
 
@@ -67,7 +64,6 @@ impl<'a, F: Real> Tensor<'a, F, ()> {
     {
         Tensor {
             expr: TensorExpr::Algebraic(input.lift()),
-            _marker: PhantomData,
         }
     }
 }
