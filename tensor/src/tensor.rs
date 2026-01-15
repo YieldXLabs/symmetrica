@@ -41,7 +41,7 @@ impl<S, F: Real, const R: usize> TensorValue<S, F, R> {
 // ------------------------
 #[derive(Debug, Clone)]
 pub enum TensorExpr<'a, F: Real, Expr, const R: usize> {
-    Pure {
+    View {
         data: PureExpr<'a, F>,
         shape: [usize; R],
     },
@@ -84,7 +84,7 @@ impl<'a, F: Real, Sh: Shape, const R: usize> Tensor<'a, F, Sh, R, ()> {
             "Data length mismatch"
         );
         Tensor {
-            expr: TensorExpr::Pure {
+            expr: TensorExpr::View {
                 data: data.lift(),
                 shape,
             },
@@ -134,7 +134,7 @@ impl<'a, F: Real, Sh: Shape, const R: usize, Expr> Tensor<'a, F, Sh, R, Expr> {
         Expr: Evaluator<F, B>,
     {
         match &self.expr {
-            TensorExpr::Pure { data, shape } => {
+            TensorExpr::View { data, shape } => {
                 let repr = backend.pure(data.data);
                 TensorValue::new(repr, *shape)
             }
