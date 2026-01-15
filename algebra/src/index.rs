@@ -6,14 +6,35 @@ pub trait Label: 'static + Copy + Clone + Debug + Send + Sync {
 
 pub trait Shape: 'static + Copy + Clone + Debug + Send + Sync {
     const RANK: usize;
+    type Indices;
 }
 
+// Scalar
 impl Shape for () {
     const RANK: usize = 0;
-} // Scalar
+    type Indices = ();
+}
+
+// Vector
 impl<A: Label> Shape for (A,) {
     const RANK: usize = 1;
-} // Vector
+    type Indices = (A,);
+}
+
+// Matrix
 impl<A: Label, B: Label> Shape for (A, B) {
     const RANK: usize = 2;
-} // Matrix
+    type Indices = (A, B);
+}
+
+// Rank-3
+impl<A: Label, B: Label, C: Label> Shape for (A, B, C) {
+    const RANK: usize = 3;
+    type Indices = (A, B, C);
+}
+
+// Rank-4
+impl<A: Label, B: Label, C: Label, D: Label> Shape for (A, B, C, D) {
+    const RANK: usize = 4;
+    type Indices = (A, B, C, D);
+}
