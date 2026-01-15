@@ -72,6 +72,7 @@ impl<'a, F: Real> Tensor<'a, F, ()> {
     }
 }
 
+// 3. Conversion into Tensor
 pub trait IntoTensor<'a, F: Real> {
     type Expr;
     fn into_tensor(self) -> Tensor<'a, F, Self::Expr>;
@@ -91,6 +92,7 @@ impl<'a, F: Real> IntoTensor<'a, F> for &'a [F] {
     }
 }
 
+// 4. Evaluation of Tensor expressions
 impl<'a, F: Real, Expr> Tensor<'a, F, Expr> {
     pub fn collect<B: Backend<F>>(&self, backend: &mut B) -> TensorValue<B::Repr, F>
     where
@@ -102,7 +104,7 @@ impl<'a, F: Real, Expr> Tensor<'a, F, Expr> {
                 TensorValue::new(repr, vec![p.data.len()])
             }
             TensorExpr::Owned(v) => {
-                let repr = backend.pure(v);
+                let repr = backend.pure(v.as_slice());
                 TensorValue::new(repr, vec![v.len()])
             }
             TensorExpr::Algebraic(e) => {
