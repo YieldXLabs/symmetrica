@@ -158,6 +158,19 @@ pub struct EqExpr<L, R> {
     pub right: R,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct EyeExpr {
+    pub n: usize,
+}
+
+impl<'a, F: Real> Lift<'a, F> for EyeExpr {
+    type Output = Self;
+
+    fn lift(self) -> Self::Output {
+        self
+    }
+}
+
 // TODO: Distance metrics
 // pub trait DistanceMetric<F: Real>: Copy + Clone + 'static {}
 
