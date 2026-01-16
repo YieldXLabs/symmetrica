@@ -1,6 +1,6 @@
-use algebra::{Lift, PureExpr, Real, Shape};
+use algebra::{EyeExpr, Lift, PureExpr, Real, Shape};
 use backend::{Backend, Evaluator};
-use std::{marker::PhantomData, sync::Arc};
+use std::marker::PhantomData;
 
 // TODO: implement eye
 // TODO: implement slice over axes
@@ -42,10 +42,6 @@ pub enum TensorExpr<'a, F: Real, Expr, const R: usize> {
     },
     Owned {
         data: Vec<F>,
-        shape: [usize; R],
-    },
-    Shared {
-        data: Arc<Vec<F>>,
         shape: [usize; R],
     },
     Algebraic(Expr),
@@ -118,6 +114,17 @@ impl<'a, F: Real, Sh: Shape> IntoTensor<'a, F, Sh, 1> for &'a [F] {
     type Expr = ();
     fn into_tensor(self) -> Tensor<'a, F, Sh, 1, ()> {
         Tensor::from_slice(self, [self.len()])
+    }
+}
+
+impl<'a, F: Real, Sh: Shape> Tensor<'a, F, Sh, 2, ()> {
+    pub fn eye(n: usize) -> Tensor<'a, F, Sh, 2, EyeExpr> {
+        assert_eq!(Sh::RANK, 2, "Tensor::eye requires a Rank 2 Shape type");
+
+        Tensor {
+            expr: TensorExpr::Algebraic(EyeExpr { n }),
+            _marker: PhantomData,
+        }
     }
 }
 
