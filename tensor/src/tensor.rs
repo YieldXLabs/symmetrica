@@ -2,9 +2,6 @@ use algebra::{Lift, PureExpr, Real, Shape};
 use backend::{Backend, Evaluator};
 use std::marker::PhantomData;
 
-// ------------------------
-// 1. Materialized Tensor Value
-// ------------------------
 #[derive(Debug, Clone)]
 pub struct TensorValue<S, F: Real, const R: usize> {
     pub storage: S,
@@ -35,9 +32,6 @@ impl<S, F: Real, const R: usize> TensorValue<S, F, R> {
     }
 }
 
-// ------------------------
-// 2. Symbolic / hybrid tensor expression
-// ------------------------
 #[derive(Debug, Clone)]
 pub enum TensorExpr<'a, F: Real, Expr, const R: usize> {
     View {
@@ -51,18 +45,12 @@ pub enum TensorExpr<'a, F: Real, Expr, const R: usize> {
     Algebraic(Expr),
 }
 
-// ------------------------
-// 3. Main Tensor struct
-// ------------------------
 #[derive(Debug, Clone)]
 pub struct Tensor<'a, F: Real, Sh: Shape, const R: usize, Expr = ()> {
     pub expr: TensorExpr<'a, F, Expr, R>,
     _marker: PhantomData<Sh>,
 }
 
-// ------------------------
-// 4. Tensor constructors
-// ------------------------
 impl<'a, F: Real, Sh: Shape, const R: usize> Tensor<'a, F, Sh, R, ()> {
     pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Self {
         assert_eq!(R, Sh::RANK, "Shape generic Sh does not match Rank R");
@@ -107,9 +95,6 @@ impl<'a, F: Real, Sh: Shape, const R: usize> Tensor<'a, F, Sh, R, ()> {
     }
 }
 
-// ------------------------
-// 5. IntoTensor trait
-// ------------------------
 // TODO: provide a default shape type (like (), or a DynRank struct)
 pub trait IntoTensor<'a, F: Real, Sh: Shape, const R: usize> {
     type Expr;
@@ -130,9 +115,6 @@ impl<'a, F: Real, Sh: Shape> IntoTensor<'a, F, Sh, 1> for &'a [F] {
     }
 }
 
-// ------------------------
-// 6. Collect method
-// ------------------------
 impl<'a, F: Real, Sh: Shape, const R: usize, Expr> Tensor<'a, F, Sh, R, Expr> {
     pub fn collect<B: Backend<F>>(&self, backend: &mut B) -> TensorValue<B::Repr, F, R>
     where
