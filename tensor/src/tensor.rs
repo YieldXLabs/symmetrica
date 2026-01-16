@@ -103,9 +103,9 @@ pub trait IntoTensor<'a, F: Real, Sh: Shape, const R: usize> {
     fn into_tensor(self) -> Tensor<'a, F, Sh, R, Self::Expr>;
 }
 
-impl<'a, F: Real, Sh: Shape, const N: usize> IntoTensor<'a, F, Sh, 1> for [F; N] {
+impl<F: Real, Sh: Shape, const N: usize> IntoTensor<'static, F, Sh, 1> for [F; N] {
     type Expr = ();
-    fn into_tensor(self) -> Tensor<'a, F, Sh, 1, ()> {
+    fn into_tensor(self) -> Tensor<'static, F, Sh, 1, ()> {
         Tensor::from_vec(self.to_vec(), [N])
     }
 }
