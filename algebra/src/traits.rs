@@ -36,6 +36,7 @@ pub trait Field: Ring + Copy + Div<Output = Self> {
 }
 
 // Extensions: Ordering and Real Analysis
+// Todo: Ord for floats is tricky due to NaN; ensure proper handling
 pub trait OrderedField: Field + PartialOrd + Ord {
     fn abs(self) -> Self;
     fn signum(self) -> Self;
