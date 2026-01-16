@@ -66,11 +66,14 @@ pub struct Tensor<'a, F: Real, Sh: Shape, const R: usize, Expr = ()> {
 // ------------------------
 impl<'a, F: Real, Sh: Shape, const R: usize> Tensor<'a, F, Sh, R, ()> {
     pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Self {
+        assert_eq!(R, Sh::RANK, "Shape generic Sh does not match Rank R");
+
         assert_eq!(
             data.len(),
             shape.iter().product::<usize>(),
             "Data length mismatch"
         );
+
         Tensor {
             expr: TensorExpr::Owned { data, shape },
             _marker: PhantomData,
@@ -78,6 +81,8 @@ impl<'a, F: Real, Sh: Shape, const R: usize> Tensor<'a, F, Sh, R, ()> {
     }
 
     pub fn from_slice(data: &'a [F], shape: [usize; R]) -> Self {
+        assert_eq!(R, Sh::RANK, "Shape generic Sh does not match Rank R");
+
         assert_eq!(
             data.len(),
             shape.iter().product::<usize>(),
@@ -106,6 +111,7 @@ impl<'a, F: Real, Sh: Shape, const R: usize> Tensor<'a, F, Sh, R, ()> {
 // ------------------------
 // 5. IntoTensor trait
 // ------------------------
+// TODO: provide a default shape type (like (), or a DynRank struct)
 pub trait IntoTensor<'a, F: Real, Sh: Shape, const R: usize> {
     type Expr;
     fn into_tensor(self) -> Tensor<'a, F, Sh, R, Self::Expr>;
@@ -159,6 +165,10 @@ macro_rules! __count {
     ($head:expr $(, $tail:expr)*) => (1usize + $crate::__count!($($tail),*));
 }
 
+// TODO: Improve float conversion here.
+// Just push the value. Rust inference will handle the conversion
+// if F implements From<f64> or similar.
+// Or use: $vec.push($crate::algebra::Real::from_f64($x as f64).unwrap());
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __flatten_1d {
