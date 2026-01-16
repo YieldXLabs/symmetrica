@@ -159,23 +159,15 @@ pub struct EqExpr<L, R> {
 }
 
 // TODO: Distance metrics
-// #[derive(Debug, Clone, Copy)]
-// pub enum Metric {
-//     Euclidean, // L2
-//     Manhattan, // L1
-//     Cosine,    // Dot product normalized
-// }
+// pub trait DistanceMetric<F: Real>: Copy + Clone + 'static {}
 
-// // The Symbolic Node: Represents the uncomputed distance matrix
 // #[derive(Debug, Clone, Copy)]
-// pub struct CDistExpr<L, R> {
-//     pub left: L,    // The Query Tensor
-//     pub right: R,   // The Database/Index Tensor
-//     pub metric: Metric,
-// }
+// pub struct Euclidean;
+// impl<F: Real> DistanceMetric<F> for Euclidean {}
 
-// // Allow it to be part of the AST
-// impl<L, R> Lift<'_, ()> for CDistExpr<L, R> {
-//     type Output = Self;
-//     fn lift(self) -> Self::Output { self }
+// #[derive(Debug, Clone, Copy)]
+// pub struct CDistExpr<L, R, M> {
+//     pub left: L,
+//     pub right: R,
+//     _metric: PhantomData<M>,
 // }
