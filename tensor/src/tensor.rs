@@ -2,7 +2,7 @@ use algebra::{EyeExpr, Lift, PureExpr, Real, Shape};
 use backend::{Backend, Evaluator};
 use std::marker::PhantomData;
 
-// TODO: implement eye
+// TODO: implement toeplitz(), zeros(), ones(), full()
 // TODO: implement slice over axes
 #[derive(Debug, Clone)]
 pub struct TensorValue<S, F: Real, const R: usize> {
