@@ -1,6 +1,5 @@
 use algebra::{Lift, PureExpr, Real, Shape};
 use backend::{Backend, Evaluator};
-use std::convert::TryInto;
 use std::marker::PhantomData;
 
 // ------------------------
