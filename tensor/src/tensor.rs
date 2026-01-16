@@ -1,7 +1,9 @@
 use algebra::{Lift, PureExpr, Real, Shape};
 use backend::{Backend, Evaluator};
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::Arc};
 
+// TODO: implement eye
+// TODO: implement slice over axes
 #[derive(Debug, Clone)]
 pub struct TensorValue<S, F: Real, const R: usize> {
     pub storage: S,
@@ -40,6 +42,10 @@ pub enum TensorExpr<'a, F: Real, Expr, const R: usize> {
     },
     Owned {
         data: Vec<F>,
+        shape: [usize; R],
+    },
+    Shared {
+        data: Arc<Vec<F>>,
         shape: [usize; R],
     },
     Algebraic(Expr),
