@@ -1,4 +1,4 @@
-use super::{BinaryKernel, ReduceKernel, UnaryKernel};
+use super::{BinaryKernel, ReduceKernel, StreamKernel, UnaryKernel};
 use algebra::Real;
 
 pub struct SubKernel;
@@ -36,5 +36,21 @@ impl<F: Real> ReduceKernel<F> for SumKernel {
     }
     fn step(acc: F, x: F) -> F {
         acc + x
+    }
+}
+
+pub struct Ema<F> {
+    alpha: F,
+}
+impl<F: Real> StreamKernel<F> for Ema<F> {
+    type State = F;
+
+    fn init(&self) -> F {
+        F::zero()
+    }
+
+    fn step(&self, state: &mut F, x: F) -> F {
+        *state = self.alpha * x + (F::one() - self.alpha) * (*state);
+        *state
     }
 }
