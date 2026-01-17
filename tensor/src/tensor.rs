@@ -57,22 +57,17 @@ pub struct Tensor<F: Real, Sh: Shape, const R: usize, Expr = DenseExpr<Vec<F>, R
     _marker: PhantomData<Sh>,
 }
 
-impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, ()> {
-    pub fn from_expr<L>(input: L) -> Tensor<F, Sh, R, L::Output>
-    where
-        L: Lift<F>,
-    {
-        Tensor {
-            expr: TensorExpr::Algebraic(input.lift()),
-            _marker: PhantomData,
-        }
-    }
-}
-
 impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, DenseExpr<Vec<F>, R>> {
     pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Self {
-        // assert_eq!(R, Sh::RANK, "Shape generic Sh does not match Rank R");
-        assert_eq!(
+        debug_assert_eq!(
+            R,
+            Sh::RANK,
+            "Tensor rank R={} doesn't match shape rank Sh::RANK={}",
+            R,
+            Sh::RANK
+        );
+
+        debug_assert_eq!(
             data.len(),
             shape.iter().product::<usize>(),
             "Data length mismatch"
@@ -93,6 +88,18 @@ impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, DenseExpr<Vec<F>, R>> 
 
     pub fn from_slice(data: &[F], shape: [usize; R]) -> Self {
         Self::from_vec(data.to_vec(), shape)
+    }
+}
+
+impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, ()> {
+    pub fn from_expr<L>(input: L) -> Tensor<F, Sh, R, L::Output>
+    where
+        L: Lift<F>,
+    {
+        Tensor {
+            expr: TensorExpr::Algebraic(input.lift()),
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -224,11 +231,11 @@ macro_rules! tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use algebra::TradingFloat;
+    use algebra::{TradingFloat, Untyped};
 
     #[test]
     fn test_tensor_expr() {
-        let a: Tensor<TradingFloat, (), 1> = tensor![2.0, 3.0, 5.0];
+        let a: Tensor<TradingFloat, (Untyped,), 1> = tensor![2.0, 3.0, 5.0];
 
         match &a.expr {
             TensorExpr::Dense(dense) => {

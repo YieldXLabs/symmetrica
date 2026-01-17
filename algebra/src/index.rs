@@ -9,42 +9,55 @@ pub trait Shape: 'static + Copy + Clone + Debug + Send + Sync {
     type Indices;
 }
 
-// Scalar
-impl Shape for () {
+pub type ScalarShape = ();
+pub type VectorShape<A> = (A,);
+pub type MatrixShape<A, B> = (A, B);
+pub type CubeShape<A, B, C> = (A, B, C);
+pub type TensorShape<A, B, C, D> = (A, B, C, D);
+
+impl Shape for ScalarShape {
     const RANK: usize = 0;
     type Indices = ();
 }
 
-// Vector
-impl<A: Label> Shape for (A,) {
+impl<A: Label> Shape for VectorShape<A> {
     const RANK: usize = 1;
     type Indices = (A,);
 }
 
-// Matrix
-impl<A: Label, B: Label> Shape for (A, B) {
+impl<A: Label, B: Label> Shape for MatrixShape<A, B> {
     const RANK: usize = 2;
     type Indices = (A, B);
 }
 
-// Rank-3
-impl<A: Label, B: Label, C: Label> Shape for (A, B, C) {
+impl<A: Label, B: Label, C: Label> Shape for CubeShape<A, B, C> {
     const RANK: usize = 3;
     type Indices = (A, B, C);
 }
 
-// Rank-4
-impl<A: Label, B: Label, C: Label, D: Label> Shape for (A, B, C, D) {
+impl<A: Label, B: Label, C: Label, D: Label> Shape for TensorShape<A, B, C, D> {
     const RANK: usize = 4;
     type Indices = (A, B, C, D);
 }
 
-pub trait AxisOf<L: Label>: Shape {
-    const INDEX: usize;
-    type Remainder: Shape;
+#[derive(Debug, Clone, Copy)]
+pub struct Untyped;
+impl Label for Untyped {
+    fn name() -> &'static str {
+        "Untyped"
+    }
 }
 
-impl<A: Label> AxisOf<A> for (A,) {
-    const INDEX: usize = 0;
-    type Remainder = ();
-}
+// // Batch processing
+// pub type BatchVector<A, Batch> = (Batch, A);  // Batch × Features
+// pub type BatchMatrix<A, B, Batch> = (Batch, A, B);  // Batch × Rows × Cols
+
+// pub trait AxisOf<L: Label>: Shape {
+//     const INDEX: usize;
+//     type Remainder: Shape;
+// }
+
+// impl<A: Label> AxisOf<A> for (A,) {
+//     const INDEX: usize = 0;
+//     type Remainder = ();
+// }
