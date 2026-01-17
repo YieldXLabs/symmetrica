@@ -56,6 +56,8 @@ pub trait Backend<F: Real> {
 
     fn binary<K: BinaryKernel<F>>(&mut self, lhs: &Self::Repr, rhs: &Self::Repr) -> Self::Repr;
 
+    fn reduce<K: ReduceKernel<F>>(&mut self, input: &Self::Repr) -> F;
+
     fn stream<K: StreamKernel<F>>(&mut self, input: &Self::Repr, kernel: K) -> Self::Repr;
 
     fn compute<E>(&mut self, expr: &E) -> (Self::Repr, Vec<usize>)
