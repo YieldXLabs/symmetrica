@@ -80,7 +80,7 @@ impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R> {
         debug_assert_eq!(R, Sh::RANK);
         debug_assert_eq!(data.len(), shape.iter().product::<usize>());
 
-        let strides = compute_strides(&shape);
+        let strides = Self::compute_strides(&shape);
 
         Tensor::from_dense(DenseExpr {
             data: Arc::new(data),
@@ -103,16 +103,16 @@ impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R> {
             _marker: PhantomData,
         }
     }
-}
 
-fn compute_strides<const R: usize>(shape: &[usize; R]) -> [usize; R] {
-    let mut strides = [0; R];
-    let mut product = 1;
-    for i in (0..R).rev() {
-        strides[i] = product;
-        product *= shape[i];
+    fn compute_strides(shape: &[usize; R]) -> [usize; R] {
+        let mut strides = [0; R];
+        let mut product = 1;
+        for i in (0..R).rev() {
+            strides[i] = product;
+            product *= shape[i];
+        }
+        strides
     }
-    strides
 }
 
 impl<F, B, E, const R: usize> Evaluator<F, B> for ExprNode<E, Vec<F>, R>
