@@ -54,3 +54,18 @@ impl<F: Real> StreamKernel<F> for Ema<F> {
         *state
     }
 }
+
+// struct TwapKernel<F> {
+//     horizon: usize,
+// }
+
+// impl<F: Real> StreamKernel<F> for TwapKernel<F> {
+//     type State = usize;
+
+//     fn init(&self) -> usize { 0 }
+
+//     fn step(&self, state: &mut usize, delta: F) -> F {
+//         *state += 1;
+//         delta / F::try_from(self.horizon).unwrap()
+//     }
+// }

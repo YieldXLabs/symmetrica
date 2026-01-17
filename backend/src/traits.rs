@@ -60,15 +60,11 @@ pub trait Backend<F: Real> {
 
     fn stream<K: StreamKernel<F>>(&mut self, input: &Self::Repr, kernel: K) -> Self::Repr;
 
-    fn compute<E>(&mut self, expr: &E) -> (Self::Repr, Vec<usize>)
-    where
-        E: Evaluator<F, Self>,
-        Self: Sized,
-    {
-        expr.eval(self)
-    }
-}
-
-pub trait Evaluator<F: Real, B: Backend<F> + ?Sized> {
-    fn eval(&self, backend: &mut B) -> (B::Repr, Vec<usize>);
+    // fn compute<E>(&mut self, expr: &E) -> (Self::Repr, Vec<usize>)
+    // where
+    //     E: Evaluator<F, Self>,
+    //     Self: Sized,
+    // {
+    //     expr.eval(self)
+    // }
 }

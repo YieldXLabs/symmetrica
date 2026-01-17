@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use super::Real;
 
 pub trait Lift<F: Real> {
@@ -142,19 +144,6 @@ pub struct GtExpr<L, R> {
 pub struct EqExpr<L, R> {
     pub left: L,
     pub right: R,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct EyeExpr {
-    pub n: usize,
-}
-
-impl<F: Real> Lift<F> for EyeExpr {
-    type Output = Self;
-
-    fn lift(self) -> Self::Output {
-        self
-    }
 }
 
 // TODO: Distance metrics

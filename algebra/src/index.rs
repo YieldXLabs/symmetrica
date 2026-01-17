@@ -48,6 +48,14 @@ impl Label for Untyped {
     }
 }
 
+pub trait HasAxis<A: Label> {}
+pub trait Permute<From, To> {}
+pub trait Broadcast<Other> {}
+
+pub trait IndexOf<A: Label> {
+    const POS: usize;
+}
+
 // // Batch processing
 // pub type BatchVector<A, Batch> = (Batch, A);  // Batch × Features
 // pub type BatchMatrix<A, B, Batch> = (Batch, A, B);  // Batch × Rows × Cols

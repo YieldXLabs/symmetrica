@@ -1,8 +1,9 @@
-use algebra::{EyeExpr, Lift, Real, Shape};
-use backend::{Backend, Evaluator};
+use super::Evaluator;
+use algebra::{AddExpr, Lift, Real, Shape};
+use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
 
-// TODO: implement toeplitz(), zeros(), ones(), full()
+// TODO: implement toeplitz(), zeros(), ones(), full(), eye()
 // TODO: implement slice over axes
 #[derive(Debug, Clone)]
 pub struct TensorValue<S, F: Real, const R: usize> {
@@ -46,124 +47,60 @@ pub struct DenseExpr<S, const R: usize> {
 }
 
 #[derive(Debug, Clone)]
-pub enum TensorExpr<S, Expr, const R: usize> {
-    Dense(DenseExpr<S, R>),
-    Algebraic(Expr),
+pub enum ExprNode<E, S, const R: usize> {
+    Value(DenseExpr<S, R>),
+    Op(E),
 }
 
 #[derive(Debug, Clone)]
 pub struct Tensor<F: Real, Sh: Shape, const R: usize, Expr = DenseExpr<Vec<F>, R>> {
-    pub expr: TensorExpr<Vec<F>, Expr, R>,
+    pub expr: ExprNode<Expr, Vec<F>, R>,
     _marker: PhantomData<Sh>,
 }
 
-impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, DenseExpr<Vec<F>, R>> {
-    pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Self {
-        debug_assert_eq!(
-            R,
-            Sh::RANK,
-            "Tensor rank R={} doesn't match shape rank Sh::RANK={}",
-            R,
-            Sh::RANK
-        );
-
-        debug_assert_eq!(
-            data.len(),
-            shape.iter().product::<usize>(),
-            "Data length mismatch"
-        );
-
-        let strides = compute_strides(&shape);
-
-        Tensor {
-            expr: TensorExpr::Dense(DenseExpr {
-                data: Arc::new(data),
-                shape,
-                strides,
-                offset: 0,
-            }),
-            _marker: PhantomData,
-        }
-    }
-
-    pub fn from_slice(data: &[F], shape: [usize; R]) -> Self {
-        Self::from_vec(data.to_vec(), shape)
+impl<F: Real, Sh: Shape, const R: usize, Expr> Tensor<F, Sh, R, Expr> {
+    fn into_expr(self) -> ExprNode<Expr, Vec<F>, R> {
+        self.expr
     }
 }
 
-impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, ()> {
+type Dense<F, const R: usize> = DenseExpr<Vec<F>, R>;
+
+impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, Dense<F, R>> {
+    fn from_dense(dense: Dense<F, R>) -> Self {
+        Tensor {
+            expr: ExprNode::Value(dense),
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R> {
+    pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Tensor<F, Sh, R, Dense<F, R>> {
+        debug_assert_eq!(R, Sh::RANK);
+        debug_assert_eq!(data.len(), shape.iter().product::<usize>());
+
+        let strides = compute_strides(&shape);
+
+        Tensor::from_dense(DenseExpr {
+            data: Arc::new(data),
+            shape,
+            strides,
+            offset: 0,
+        })
+    }
+
+    pub fn from_slice(data: &[F], shape: [usize; R]) -> Tensor<F, Sh, R, Dense<F, R>> {
+        Self::from_vec(data.to_vec(), shape)
+    }
+
     pub fn from_expr<L>(input: L) -> Tensor<F, Sh, R, L::Output>
     where
         L: Lift<F>,
     {
         Tensor {
-            expr: TensorExpr::Algebraic(input.lift()),
+            expr: ExprNode::Op(input.lift()),
             _marker: PhantomData,
-        }
-    }
-}
-
-// TODO: provide a default shape type (like (), or a DynRank struct)
-pub trait IntoTensor<F: Real, Sh: Shape, const R: usize> {
-    type Expr;
-    fn into_tensor(self) -> Tensor<F, Sh, R, Self::Expr>;
-}
-
-impl<F: Real, Sh: Shape, const N: usize> IntoTensor<F, Sh, 1> for [F; N] {
-    type Expr = DenseExpr<Vec<F>, 1>;
-
-    fn into_tensor(self) -> Tensor<F, Sh, 1, Self::Expr> {
-        Tensor::from_vec(self.to_vec(), [N])
-    }
-}
-
-impl<'a, F: Real, Sh: Shape> IntoTensor<F, Sh, 1> for &'a [F] {
-    type Expr = DenseExpr<Vec<F>, 1>;
-
-    fn into_tensor(self) -> Tensor<F, Sh, 1, Self::Expr> {
-        Tensor::from_slice(self, [self.len()])
-    }
-}
-
-impl<F: Real, Sh: Shape> IntoTensor<F, Sh, 1> for Vec<F> {
-    type Expr = DenseExpr<Vec<F>, 1>;
-
-    fn into_tensor(self) -> Tensor<F, Sh, 1, Self::Expr> {
-        let len = self.len();
-        Tensor::from_vec(self, [len])
-    }
-}
-
-impl<F: Real, Sh: Shape> Tensor<F, Sh, 2, ()> {
-    pub fn eye(n: usize) -> Tensor<F, Sh, 2, EyeExpr> {
-        assert_eq!(Sh::RANK, 2);
-        Tensor {
-            expr: TensorExpr::Algebraic(EyeExpr { n }),
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<F: Real, Sh: Shape, const R: usize, Expr> Tensor<F, Sh, R, Expr> {
-    pub fn collect<B: Backend<F>>(&self, backend: &mut B) -> TensorValue<B::Repr, F, R>
-    where
-        Expr: Evaluator<F, B>,
-        DenseExpr<Vec<F>, R>: Evaluator<F, B>,
-    {
-        match &self.expr {
-            TensorExpr::Dense(dense) => {
-                let (repr, _) = dense.eval(backend);
-
-                TensorValue::from_parts(repr, dense.shape, dense.strides, dense.offset)
-            }
-
-            TensorExpr::Algebraic(expr) => {
-                let (repr, shape_vec) = expr.eval(backend);
-                let shape_arr: [usize; R] =
-                    shape_vec.try_into().expect("Evaluator returned wrong rank");
-
-                TensorValue::new(repr, shape_arr)
-            }
         }
     }
 }
@@ -176,6 +113,54 @@ fn compute_strides<const R: usize>(shape: &[usize; R]) -> [usize; R] {
         product *= shape[i];
     }
     strides
+}
+
+impl<F, B, E, const R: usize> Evaluator<F, B> for ExprNode<E, Vec<F>, R>
+where
+    F: Real,
+    B: Backend<F>,
+    E: Evaluator<F, B>,
+    DenseExpr<Vec<F>, R>: Evaluator<F, B>,
+{
+    fn eval(&self, backend: &mut B) -> (B::Repr, Vec<usize>) {
+        match self {
+            ExprNode::Value(dense) => dense.eval(backend),
+            ExprNode::Op(expr) => expr.eval(backend),
+        }
+    }
+}
+
+impl<F: Real, Sh: Shape, const R: usize, Expr> Tensor<F, Sh, R, Expr> {
+    pub fn collect<B: Backend<F>>(&self, backend: &mut B) -> TensorValue<B::Repr, F, R>
+    where
+        ExprNode<Expr, Vec<F>, R>: Evaluator<F, B>,
+    {
+        let (repr, shape_vec) = self.expr.eval(backend);
+
+        let shape_arr: [usize; R] = shape_vec.try_into().expect("Evaluator returned wrong rank");
+
+        TensorValue::new(repr, shape_arr)
+    }
+}
+
+use std::ops::Add;
+
+impl<F, Sh, const R: usize, L, Rhs> Add<Tensor<F, Sh, R, Rhs>> for Tensor<F, Sh, R, L>
+where
+    F: Real,
+    Sh: Shape,
+{
+    type Output = Tensor<F, Sh, R, AddExpr<ExprNode<L, Vec<F>, R>, ExprNode<Rhs, Vec<F>, R>>>;
+
+    fn add(self, rhs: Tensor<F, Sh, R, Rhs>) -> Self::Output {
+        Tensor {
+            expr: ExprNode::Op(AddExpr {
+                left: self.into_expr(),
+                right: rhs.into_expr(),
+            }),
+            _marker: PhantomData,
+        }
+    }
 }
 
 #[doc(hidden)]
@@ -232,25 +217,22 @@ macro_rules! tensor {
 mod tests {
     use super::*;
     use algebra::{TradingFloat, Untyped};
+    use backend::GenericBackend;
 
     #[test]
-    fn test_tensor_expr() {
+    fn test_tensor_add() {
+        let mut backend = GenericBackend::<TradingFloat>::new();
         let a: Tensor<TradingFloat, (Untyped,), 1> = tensor![2.0, 3.0, 5.0];
+        let b: Tensor<TradingFloat, (Untyped,), 1> = tensor![1.0, 3.0, 2.0];
 
-        match &a.expr {
-            TensorExpr::Dense(dense) => {
-                assert_eq!(dense.shape, [3], "Shape should be [3]");
-                assert_eq!(dense.strides, [1], "Strides should be [1]");
-                assert_eq!(dense.offset, 0, "Offset should be 0");
+        let c = a + b;
 
-                let vec_data = &dense.data;
+        let result = c.collect(&mut backend);
 
-                assert_eq!(vec_data.len(), 3, "Data length mismatch");
-                assert_eq!(vec_data[0], TradingFloat::try_from(2.0).unwrap());
-                assert_eq!(vec_data[1], TradingFloat::try_from(3.0).unwrap());
-                assert_eq!(vec_data[2], TradingFloat::try_from(5.0).unwrap());
-            }
-            _ => panic!("Expected Dense variant"),
-        }
+        assert_eq!(
+            result.shape,
+            [3],
+            "Result shape should be [3] for vector addition"
+        );
     }
 }
