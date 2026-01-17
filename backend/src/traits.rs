@@ -8,6 +8,24 @@ pub trait Storage<F>: Debug + Clone + Send + Sync {
     fn as_mut_slice(&mut self) -> &mut [F];
 }
 
+impl<F: Real> Storage<F> for Vec<F>
+where
+    F: Send + Sync,
+{
+    fn len(&self) -> usize {
+        self.len()
+    }
+    fn alloc(n: usize) -> Self {
+        vec![F::zero(); n]
+    }
+    fn as_slice(&self) -> &[F] {
+        self
+    }
+    fn as_mut_slice(&mut self) -> &mut [F] {
+        self
+    }
+}
+
 pub trait UnaryKernel<S> {
     fn apply(inp: &S, out: &mut S);
 }

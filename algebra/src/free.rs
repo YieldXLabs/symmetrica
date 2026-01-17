@@ -1,23 +1,9 @@
 use super::Real;
 
-pub trait Lift<'a, F: Real> {
+pub trait Lift<F: Real> {
     type Output;
 
     fn lift(self) -> Self::Output;
-}
-
-// Leaf node: reference to slice of data
-#[derive(Debug, Clone, Copy)]
-pub struct PureExpr<'a, F: Real> {
-    pub data: &'a [F],
-}
-
-impl<'a, F: Real> Lift<'a, F> for &'a [F] {
-    type Output = PureExpr<'a, F>;
-
-    fn lift(self) -> Self::Output {
-        PureExpr { data: self }
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -163,7 +149,7 @@ pub struct EyeExpr {
     pub n: usize,
 }
 
-impl<'a, F: Real> Lift<'a, F> for EyeExpr {
+impl<F: Real> Lift<F> for EyeExpr {
     type Output = Self;
 
     fn lift(self) -> Self::Output {

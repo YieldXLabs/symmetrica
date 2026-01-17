@@ -38,3 +38,13 @@ impl<A: Label, B: Label, C: Label, D: Label> Shape for (A, B, C, D) {
     const RANK: usize = 4;
     type Indices = (A, B, C, D);
 }
+
+pub trait AxisOf<L: Label>: Shape {
+    const INDEX: usize;
+    type Remainder: Shape;
+}
+
+impl<A: Label> AxisOf<A> for (A,) {
+    const INDEX: usize = 0;
+    type Remainder = ();
+}
