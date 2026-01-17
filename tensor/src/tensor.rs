@@ -46,6 +46,8 @@ pub struct DenseExpr<S, const R: usize> {
     pub offset: usize,
 }
 
+type Dense<F, const R: usize> = DenseExpr<Vec<F>, R>;
+
 #[derive(Debug, Clone)]
 pub enum ExprNode<E, S, const R: usize> {
     Value(DenseExpr<S, R>),
@@ -53,7 +55,7 @@ pub enum ExprNode<E, S, const R: usize> {
 }
 
 #[derive(Debug, Clone)]
-pub struct Tensor<F: Real, Sh: Shape, const R: usize, Expr = DenseExpr<Vec<F>, R>> {
+pub struct Tensor<F: Real, Sh: Shape, const R: usize, Expr = Dense<F, R>> {
     pub expr: ExprNode<Expr, Vec<F>, R>,
     _marker: PhantomData<Sh>,
 }
@@ -63,8 +65,6 @@ impl<F: Real, Sh: Shape, const R: usize, Expr> Tensor<F, Sh, R, Expr> {
         self.expr
     }
 }
-
-type Dense<F, const R: usize> = DenseExpr<Vec<F>, R>;
 
 impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, Dense<F, R>> {
     fn from_dense(dense: Dense<F, R>) -> Self {
@@ -162,6 +162,38 @@ where
         }
     }
 }
+
+// TODO: provide a default shape type (like (), or a DynRank struct)
+// pub trait IntoTensor<F: Real, Sh: Shape, const R: usize> {
+//     type Expr;
+//     fn into_tensor(self) -> Tensor<F, Sh, R, Self::Expr>;
+// }
+
+// impl<F: Real, Sh: Shape, const N: usize> IntoTensor<F, Sh, 1> for [F; N] {
+//     type Expr = DenseExpr<Vec<F>, 1>;
+
+//     fn into_tensor(self) -> Tensor<F, Sh, 1, Self::Expr> {
+//         Tensor::from_vec(self.to_vec(), [N])
+//     }
+// }
+
+// impl<'a, F: Real, Sh: Shape> IntoTensor<F, Sh, 1> for &'a [F] {
+//     type Expr = DenseExpr<Vec<F>, 1>;
+
+//     fn into_tensor(self) -> Tensor<F, Sh, 1, Self::Expr> {
+//         Tensor::from_slice(self, [self.len()])
+//     }
+// }
+
+// impl<F: Real, Sh: Shape> IntoTensor<F, Sh, 1> for Vec<F> {
+//     type Expr = DenseExpr<Vec<F>, 1>;
+
+//     fn into_tensor(self) -> Tensor<F, Sh, 1, Self::Expr> {
+//         let len = self.len();
+//         Tensor::from_vec(self, [len])
+//     }
+// }
+
 
 #[doc(hidden)]
 #[macro_export]
