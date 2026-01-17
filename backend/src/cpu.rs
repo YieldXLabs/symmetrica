@@ -30,6 +30,7 @@ impl<F: Real> Backend<F> for GenericBackend<F> {
     fn pure(&mut self, data: &[F]) -> Self::Repr {
         let mut storage = Self::Repr::alloc(data.len());
         storage.as_mut_slice().copy_from_slice(data);
+        
         storage
     }
 
@@ -50,18 +51,22 @@ impl<F: Real> Backend<F> for GenericBackend<F> {
         let lhs_slice = lhs.as_slice();
         let rhs_slice = rhs.as_slice();
         let output_slice = output.as_mut_slice();
+        
         for i in 0..lhs.len() {
             output_slice[i] = K::apply(lhs_slice[i], rhs_slice[i]);
         }
+        
         output
     }
 
     fn reduce<K: ReduceKernel<F>>(&mut self, input: &Self::Repr) -> F {
         let input_slice = input.as_slice();
         let mut acc = K::init();
+        
         for &val in input_slice {
             acc = K::step(acc, val);
         }
+        
         acc
     }
 
