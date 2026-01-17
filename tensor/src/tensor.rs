@@ -46,22 +46,22 @@ pub struct DenseExpr<S, const R: usize> {
     pub offset: usize,
 }
 
-type Dense<F, const R: usize> = DenseExpr<Vec<F>, R>;
-
 #[derive(Debug, Clone)]
-pub enum ExprNode<E, S, const R: usize> {
+pub enum TensorExpr<E, S, const R: usize> {
     Value(DenseExpr<S, R>),
     Op(E),
 }
 
+type Dense<F, const R: usize> = DenseExpr<Vec<F>, R>;
+
 #[derive(Debug, Clone)]
 pub struct Tensor<F: Real, Sh: Shape, const R: usize, Expr = Dense<F, R>> {
-    pub expr: ExprNode<Expr, Vec<F>, R>,
+    pub expr: TensorExpr<Expr, Vec<F>, R>,
     _marker: PhantomData<Sh>,
 }
 
 impl<F: Real, Sh: Shape, const R: usize, Expr> Tensor<F, Sh, R, Expr> {
-    fn into_expr(self) -> ExprNode<Expr, Vec<F>, R> {
+    fn into_expr(self) -> TensorExpr<Expr, Vec<F>, R> {
         self.expr
     }
 }
@@ -69,7 +69,7 @@ impl<F: Real, Sh: Shape, const R: usize, Expr> Tensor<F, Sh, R, Expr> {
 impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, Dense<F, R>> {
     fn from_dense(dense: Dense<F, R>) -> Self {
         Tensor {
-            expr: ExprNode::Value(dense),
+            expr: TensorExpr::Value(dense),
             _marker: PhantomData,
         }
     }
@@ -99,7 +99,7 @@ impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R> {
         L: Lift<F>,
     {
         Tensor {
-            expr: ExprNode::Op(input.lift()),
+            expr: TensorExpr::Op(input.lift()),
             _marker: PhantomData,
         }
     }
@@ -115,7 +115,7 @@ fn compute_strides<const R: usize>(shape: &[usize; R]) -> [usize; R] {
     strides
 }
 
-impl<F, B, E, const R: usize> Evaluator<F, B> for ExprNode<E, Vec<F>, R>
+impl<F, B, E, const R: usize> Evaluator<F, B> for TensorExpr<E, Vec<F>, R>
 where
     F: Real,
     B: Backend<F>,
@@ -124,8 +124,8 @@ where
 {
     fn eval(&self, backend: &mut B) -> (B::Repr, Vec<usize>) {
         match self {
-            ExprNode::Value(dense) => dense.eval(backend),
-            ExprNode::Op(expr) => expr.eval(backend),
+            TensorExpr::Value(dense) => dense.eval(backend),
+            TensorExpr::Op(expr) => expr.eval(backend),
         }
     }
 }
@@ -133,7 +133,7 @@ where
 impl<F: Real, Sh: Shape, const R: usize, Expr> Tensor<F, Sh, R, Expr> {
     pub fn collect<B: Backend<F>>(&self, backend: &mut B) -> TensorValue<B::Repr, F, R>
     where
-        ExprNode<Expr, Vec<F>, R>: Evaluator<F, B>,
+        TensorExpr<Expr, Vec<F>, R>: Evaluator<F, B>,
     {
         let (repr, shape_vec) = self.expr.eval(backend);
 
@@ -150,11 +150,11 @@ where
     F: Real,
     Sh: Shape,
 {
-    type Output = Tensor<F, Sh, R, AddExpr<ExprNode<L, Vec<F>, R>, ExprNode<Rhs, Vec<F>, R>>>;
+    type Output = Tensor<F, Sh, R, AddExpr<TensorExpr<L, Vec<F>, R>, TensorExpr<Rhs, Vec<F>, R>>>;
 
     fn add(self, rhs: Tensor<F, Sh, R, Rhs>) -> Self::Output {
         Tensor {
-            expr: ExprNode::Op(AddExpr {
+            expr: TensorExpr::Op(AddExpr {
                 left: self.into_expr(),
                 right: rhs.into_expr(),
             }),
