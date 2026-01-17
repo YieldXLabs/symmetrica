@@ -66,15 +66,6 @@ impl<F: Real, Sh: Shape, const R: usize, Expr> Tensor<F, Sh, R, Expr> {
     }
 }
 
-impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, Dense<F, R>> {
-    fn from_dense(dense: Dense<F, R>) -> Self {
-        Tensor {
-            expr: TensorExpr::Value(dense),
-            _marker: PhantomData,
-        }
-    }
-}
-
 impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R> {
     pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Tensor<F, Sh, R, Dense<F, R>> {
         debug_assert_eq!(R, Sh::RANK);
@@ -82,12 +73,15 @@ impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R> {
 
         let strides = compute_strides(&shape);
 
-        Tensor::from_dense(DenseExpr {
-            data: Arc::new(data),
-            shape,
-            strides,
-            offset: 0,
-        })
+        Tensor {
+            expr: TensorExpr::Value(DenseExpr {
+                data: Arc::new(data),
+                shape,
+                strides,
+                offset: 0,
+            }),
+            _marker: PhantomData,
+        }
     }
 
     pub fn from_slice(data: &[F], shape: [usize; R]) -> Tensor<F, Sh, R, Dense<F, R>> {
