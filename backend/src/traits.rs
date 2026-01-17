@@ -26,15 +26,20 @@ where
     }
 }
 
-pub trait UnaryKernel<S> {
-    fn apply(inp: &S, out: &mut S);
+pub trait UnaryKernel<F> {
+    fn apply(x: F) -> F;
 }
 
-pub trait BinaryKernel<S> {
-    fn apply(lhs: &S, rhs: &S, out: &mut S);
+pub trait BinaryKernel<F> {
+    fn apply(x: F, y: F) -> F;
 }
 
-pub trait StreamKernel<F: Real> {
+pub trait ReduceKernel<F> {
+    fn init() -> F;
+    fn step(acc: F, x: F) -> F;
+}
+
+pub trait StreamKernel<F> {
     type State;
 
     fn init(&self) -> Self::State;
