@@ -13,6 +13,7 @@ pub struct Base<S, F, const R: usize> {
     _marker: PhantomData<F>,
 }
 
+// TODO: ones_like, zeros_like, full_like
 impl<S, F, const R: usize> Base<S, F, R> {
     pub fn new(storage: S, shape: [usize; R]) -> Self {
         let strides = Self::compute_strides(&shape);
@@ -113,6 +114,12 @@ where
         }
     }
 }
+
+// pub trait Differentiable<F: Real> {
+//     type Grad;
+
+//     fn grad(self) -> Self::Grad;
+// }
 
 #[doc(hidden)]
 #[macro_export]
