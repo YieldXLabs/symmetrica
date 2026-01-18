@@ -22,8 +22,11 @@ pub trait Differentiable<F: Real, B: Backend<F>, const R: usize>: Evaluator<F, B
 pub struct LeafAdjoint;
 
 impl<F: Real, B: Backend<F>, const R: usize> Pullback<F, B, R> for LeafAdjoint {
-    type Gradients = (); // End of the line
-    fn back(&self, _b: &mut B, _g: Base<B::Repr, F, R>) -> Self::Gradients {}
+    type Gradients = ();
+
+    fn back(&self, _b: &mut B, _g: Base<B::Repr, F, R>) -> () {
+        ()
+    }
 }
 
 impl<F: Real, B: Backend<F>, const R: usize> Differentiable<F, B, R> for Dense<F, R> {
