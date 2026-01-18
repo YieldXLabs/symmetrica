@@ -6,15 +6,33 @@ pub trait Evaluator<F: Real, B: Backend<F>, const R: usize> {
     fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R>;
 }
 
-pub trait Backward<F: Real, B: Backend<F>, const R: usize> {
-    type Input;
+// Represents the 'backward' pass for a specific node
+pub trait Pullback<F: Real, B: Backend<F>, const R: usize> {
+    type Gradients;
 
-    fn backward(&self, backend: &mut B, grad_output: Base<B::Repr, F, R>) -> Self::Input;
+    fn back(&self, backend: &mut B, grad: Base<B::Repr, F, R>) -> Self::Gradients;
 }
 
-pub trait VJP<F: Real, B: Backend<F>, const R: usize>:
-    Evaluator<F, B, R> + Backward<F, B, R>
-{
+pub trait Differentiable<F: Real, B: Backend<F>, const R: usize>: Evaluator<F, B, R> {
+    type Adjoint: Pullback<F, B, R>;
+
+    fn forward(&self, backend: &mut B) -> (Base<B::Repr, F, R>, Self::Adjoint);
+}
+
+pub struct LeafAdjoint;
+
+impl<F: Real, B: Backend<F>, const R: usize> Pullback<F, B, R> for LeafAdjoint {
+    type Gradients = (); // End of the line
+    fn back(&self, _b: &mut B, _g: Base<B::Repr, F, R>) -> Self::Gradients {}
+}
+
+impl<F: Real, B: Backend<F>, const R: usize> Differentiable<F, B, R> for Dense<F, R> {
+    type Adjoint = LeafAdjoint;
+
+    fn forward(&self, backend: &mut B) -> (Base<B::Repr, F, R>, Self::Adjoint) {
+        let res = self.eval(backend);
+        (res, LeafAdjoint)
+    }
 }
 
 impl<F: Real, B: Backend<F>, const RANK: usize> Evaluator<F, B, RANK> for Dense<F, RANK> {
