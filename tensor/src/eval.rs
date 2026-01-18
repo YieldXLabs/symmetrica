@@ -1,36 +1,32 @@
-use super::DenseExpr;
+use super::{Base, Dense};
 use algebra::{AddExpr, Real};
 use backend::{AddKernel, Backend};
 
-pub trait Evaluator<F: Real, B: Backend<F> + ?Sized> {
-    fn eval(&self, backend: &mut B) -> (B::Repr, Vec<usize>);
+pub trait Evaluator<F: Real, B: Backend<F> + ?Sized, const R: usize> {
+    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R>;
 }
 
-impl<F: Real, B: Backend<F>, const RANK: usize> Evaluator<F, B> for DenseExpr<Vec<F>, RANK> {
-    fn eval(&self, backend: &mut B) -> (B::Repr, Vec<usize>) {
-        let data = self.data.as_slice();
+impl<F: Real, B: Backend<F>, const RANK: usize> Evaluator<F, B, RANK> for Dense<F, RANK> {
+    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, RANK> {
+        let storage = backend.pure(&self.storage);
 
-        let raw_slice = &data[self.offset..];
-
-        let storage = backend.pure(raw_slice);
-
-        (storage, self.shape.to_vec())
+        Base::from_parts(storage, self.shape, self.strides, self.offset)
     }
 }
 
-impl<F: Real, B: Backend<F>, L, R> Evaluator<F, B> for AddExpr<L, R>
+impl<F, B, L, Rhs, const R: usize> Evaluator<F, B, R> for AddExpr<L, Rhs>
 where
-    L: Evaluator<F, B>,
-    R: Evaluator<F, B>,
+    F: Real,
+    B: Backend<F>,
+    L: Evaluator<F, B, R>,
+    Rhs: Evaluator<F, B, R>,
 {
-    fn eval(&self, backend: &mut B) -> (B::Repr, Vec<usize>) {
-        let (lhs_data, lhs_shape) = self.left.eval(backend);
-        let (rhs_data, rhs_shape) = self.right.eval(backend);
+    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R> {
+        let l = self.left.eval(backend);
+        let r = self.right.eval(backend);
 
-        assert_eq!(lhs_shape, rhs_shape, "Shape mismatch in Add");
+        let storage = backend.binary::<AddKernel>(&l.storage, &r.storage);
 
-        let result_data = backend.binary::<AddKernel>(&lhs_data, &rhs_data);
-
-        (result_data, lhs_shape)
+        Base::new(storage, l.shape)
     }
 }

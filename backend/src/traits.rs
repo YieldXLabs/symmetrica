@@ -8,24 +8,6 @@ pub trait Storage<F>: Debug + Clone + Send + Sync {
     fn as_mut_slice(&mut self) -> &mut [F];
 }
 
-impl<F: Real> Storage<F> for Vec<F>
-where
-    F: Send + Sync,
-{
-    fn len(&self) -> usize {
-        self.len()
-    }
-    fn alloc(n: usize) -> Self {
-        vec![F::zero(); n]
-    }
-    fn as_slice(&self) -> &[F] {
-        self
-    }
-    fn as_mut_slice(&mut self) -> &mut [F] {
-        self
-    }
-}
-
 pub trait UnaryKernel<F> {
     fn apply(x: F) -> F;
 }
@@ -59,12 +41,4 @@ pub trait Backend<F: Real> {
     fn reduce<K: ReduceKernel<F>>(&mut self, input: &Self::Repr) -> F;
 
     fn stream<K: StreamKernel<F>>(&mut self, input: &Self::Repr, kernel: K) -> Self::Repr;
-
-    // fn compute<E>(&mut self, expr: &E) -> (Self::Repr, Vec<usize>)
-    // where
-    //     E: Evaluator<F, Self>,
-    //     Self: Sized,
-    // {
-    //     expr.eval(self)
-    // }
 }

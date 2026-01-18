@@ -3,10 +3,9 @@ use algebra::{AddExpr, Lift, Real, Shape};
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
 
-// TODO: implement toeplitz(), zeros(), ones(), full(), eye()
-// TODO: implement slice over axes
+// A view over tensor data
 #[derive(Debug, Clone)]
-pub struct TensorValue<S, F: Real, const R: usize> {
+pub struct Base<S, F, const R: usize> {
     pub storage: S,
     pub shape: [usize; R],
     pub strides: [usize; R],
@@ -14,9 +13,9 @@ pub struct TensorValue<S, F: Real, const R: usize> {
     _marker: PhantomData<F>,
 }
 
-impl<S, F: Real, const R: usize> TensorValue<S, F, R> {
+impl<S, F, const R: usize> Base<S, F, R> {
     pub fn new(storage: S, shape: [usize; R]) -> Self {
-        let strides = compute_strides(&shape);
+        let strides = Self::compute_strides(&shape);
 
         Self {
             storage,
@@ -36,55 +35,42 @@ impl<S, F: Real, const R: usize> TensorValue<S, F, R> {
             _marker: PhantomData,
         }
     }
-}
 
-#[derive(Debug, Clone)]
-pub struct DenseExpr<S, const R: usize> {
-    pub data: Arc<S>,
-    pub shape: [usize; R],
-    pub strides: [usize; R],
-    pub offset: usize,
-}
+    fn compute_strides(shape: &[usize; R]) -> [usize; R] {
+        let mut strides = [0; R];
+        let mut product = 1;
 
-#[derive(Debug, Clone)]
-pub enum TensorExpr<E, S, const R: usize> {
-    Value(DenseExpr<S, R>),
-    Op(E),
-}
+        for i in (0..R).rev() {
+            strides[i] = product;
+            product *= shape[i];
+        }
 
-type Dense<F, const R: usize> = DenseExpr<Vec<F>, R>;
-
-#[derive(Debug, Clone)]
-pub struct Tensor<F: Real, Sh: Shape, const R: usize, Expr = Dense<F, R>> {
-    pub expr: TensorExpr<Expr, Vec<F>, R>,
-    _marker: PhantomData<Sh>,
-}
-
-impl<F: Real, Sh: Shape, const R: usize, Expr> Tensor<F, Sh, R, Expr> {
-    fn into_expr(self) -> TensorExpr<Expr, Vec<F>, R> {
-        self.expr
+        strides
     }
 }
 
-impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R> {
-    pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Tensor<F, Sh, R, Dense<F, R>> {
+pub type Dense<F, const R: usize> = Base<Arc<Vec<F>>, F, R>;
+
+// TODO: implement toeplitz(), zeros(), ones(), full(), eye()
+// TODO: implement slice over axes
+#[derive(Debug, Clone)]
+pub struct Tensor<F: Real, Sh: Shape, const R: usize, E = Dense<F, R>> {
+    pub expr: E,
+    pub _marker: PhantomData<(F, Sh)>,
+}
+
+impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, Dense<F, R>> {
+    pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Self {
         debug_assert_eq!(R, Sh::RANK);
         debug_assert_eq!(data.len(), shape.iter().product::<usize>());
 
-        let strides = compute_strides(&shape);
-
         Tensor {
-            expr: TensorExpr::Value(DenseExpr {
-                data: Arc::new(data),
-                shape,
-                strides,
-                offset: 0,
-            }),
+            expr: Dense::new(Arc::new(data), shape),
             _marker: PhantomData,
         }
     }
 
-    pub fn from_slice(data: &[F], shape: [usize; R]) -> Tensor<F, Sh, R, Dense<F, R>> {
+    pub fn from_slice(data: &[F], shape: [usize; R]) -> Self {
         Self::from_vec(data.to_vec(), shape)
     }
 
@@ -93,47 +79,18 @@ impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R> {
         L: Lift<F>,
     {
         Tensor {
-            expr: TensorExpr::Op(input.lift()),
+            expr: input.lift(),
             _marker: PhantomData,
         }
     }
 }
 
-fn compute_strides<const R: usize>(shape: &[usize; R]) -> [usize; R] {
-    let mut strides = [0; R];
-    let mut product = 1;
-    for i in (0..R).rev() {
-        strides[i] = product;
-        product *= shape[i];
-    }
-    strides
-}
-
-impl<F, B, E, const R: usize> Evaluator<F, B> for TensorExpr<E, Vec<F>, R>
-where
-    F: Real,
-    B: Backend<F>,
-    E: Evaluator<F, B>,
-    DenseExpr<Vec<F>, R>: Evaluator<F, B>,
-{
-    fn eval(&self, backend: &mut B) -> (B::Repr, Vec<usize>) {
-        match self {
-            TensorExpr::Value(dense) => dense.eval(backend),
-            TensorExpr::Op(expr) => expr.eval(backend),
-        }
-    }
-}
-
-impl<F: Real, Sh: Shape, const R: usize, Expr> Tensor<F, Sh, R, Expr> {
-    pub fn collect<B: Backend<F>>(&self, backend: &mut B) -> TensorValue<B::Repr, F, R>
+impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
+    pub fn collect<B: Backend<F>>(&self, backend: &mut B) -> Base<B::Repr, F, R>
     where
-        TensorExpr<Expr, Vec<F>, R>: Evaluator<F, B>,
+        E: Evaluator<F, B, R>,
     {
-        let (repr, shape_vec) = self.expr.eval(backend);
-
-        let shape_arr: [usize; R] = shape_vec.try_into().expect("Evaluator returned wrong rank");
-
-        TensorValue::new(repr, shape_arr)
+        self.expr.eval(backend)
     }
 }
 
@@ -144,19 +101,18 @@ where
     F: Real,
     Sh: Shape,
 {
-    type Output = Tensor<F, Sh, R, AddExpr<TensorExpr<L, Vec<F>, R>, TensorExpr<Rhs, Vec<F>, R>>>;
+    type Output = Tensor<F, Sh, R, AddExpr<L, Rhs>>;
 
     fn add(self, rhs: Tensor<F, Sh, R, Rhs>) -> Self::Output {
         Tensor {
-            expr: TensorExpr::Op(AddExpr {
-                left: self.into_expr(),
-                right: rhs.into_expr(),
-            }),
+            expr: AddExpr {
+                left: self.expr,
+                right: rhs.expr,
+            },
             _marker: PhantomData,
         }
     }
 }
-
 // TODO: provide a default shape type (like (), or a DynRank struct)
 // pub trait IntoTensor<F: Real, Sh: Shape, const R: usize> {
 //     type Expr;
@@ -187,6 +143,9 @@ where
 //         Tensor::from_vec(self, [len])
 //     }
 // }
+
+// Tensor with dynamic/unknown axis labels
+// type DynamicTensor<const R: usize> = Tensor<TradingFloat, (Dynamic,), R>;
 
 #[doc(hidden)]
 #[macro_export]
@@ -241,14 +200,20 @@ macro_rules! tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use algebra::{TradingFloat, Untyped};
+    use algebra::{Shape, TradingFloat};
     use backend::GenericBackend;
+
+    struct TestShape;
+    impl Shape for TestShape {
+        const RANK: usize = 1;
+        type Axes = ();
+    }
 
     #[test]
     fn test_tensor_add() {
         let mut backend = GenericBackend::<TradingFloat>::new();
-        let a: Tensor<TradingFloat, (Untyped,), 1> = tensor![2.0, 3.0, 5.0];
-        let b: Tensor<TradingFloat, (Untyped,), 1> = tensor![1.0, 3.0, 2.0];
+        let a: Tensor<TradingFloat, TestShape, 1> = tensor![2.0, 3.0, 5.0];
+        let b: Tensor<TradingFloat, TestShape, 1> = tensor![1.0, 3.0, 2.0];
 
         let c = a + b;
 

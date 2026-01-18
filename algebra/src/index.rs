@@ -1,60 +1,49 @@
 use std::fmt::Debug;
+use std::marker::PhantomData;
+
+#[derive(Debug, Clone, Copy)]
+pub struct Nil;
+
+#[derive(Debug, Clone, Copy)]
+pub struct Cons<H, T>(PhantomData<(H, T)>);
 
 pub trait Label: 'static + Copy + Clone + Debug + Send + Sync {
     fn name() -> &'static str;
 }
 
-pub trait Shape: 'static + Copy + Clone + Debug + Send + Sync {
+pub trait Shape {
     const RANK: usize;
-    type Indices;
+    type Axes;
 }
 
-pub type ScalarShape = ();
-pub type VectorShape<A> = (A,);
-pub type MatrixShape<A, B> = (A, B);
-pub type CubeShape<A, B, C> = (A, B, C);
-pub type TensorShape<A, B, C, D> = (A, B, C, D);
-
-impl Shape for ScalarShape {
+impl Shape for Nil {
     const RANK: usize = 0;
-    type Indices = ();
+    type Axes = Nil;
 }
 
-impl<A: Label> Shape for VectorShape<A> {
-    const RANK: usize = 1;
-    type Indices = (A,);
+impl<H: Label, T: Shape> Shape for Cons<H, T> {
+    const RANK: usize = 1 + T::RANK;
+    type Axes = Cons<H, T>;
 }
-
-impl<A: Label, B: Label> Shape for MatrixShape<A, B> {
-    const RANK: usize = 2;
-    type Indices = (A, B);
-}
-
-impl<A: Label, B: Label, C: Label> Shape for CubeShape<A, B, C> {
-    const RANK: usize = 3;
-    type Indices = (A, B, C);
-}
-
-impl<A: Label, B: Label, C: Label, D: Label> Shape for TensorShape<A, B, C, D> {
-    const RANK: usize = 4;
-    type Indices = (A, B, C, D);
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Untyped;
-impl Label for Untyped {
-    fn name() -> &'static str {
-        "Untyped"
-    }
-}
-
-pub trait HasAxis<A: Label> {}
-pub trait Permute<From, To> {}
-pub trait Broadcast<Other> {}
 
 pub trait IndexOf<A: Label> {
     const POS: usize;
 }
+
+impl<A: Label, T> IndexOf<A> for Cons<A, T> {
+    const POS: usize = 0;
+}
+
+// impl<A: Label, H: Label, T> IndexOf<A> for Cons<H, T>
+// where
+//     T: IndexOf<A>,
+// {
+//     const POS: usize = 1 + T::POS;
+// }
+
+// impl<A: Label, B: Label> IndexOf<B> for (A, B) {
+//     const POS: usize = 1;
+// }
 
 // // Batch processing
 // pub type BatchVector<A, Batch> = (Batch, A);  // Batch × Features
