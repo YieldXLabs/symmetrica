@@ -2,8 +2,19 @@ use super::{Base, Dense};
 use algebra::{AddExpr, Real};
 use backend::{AddKernel, Backend};
 
-pub trait Evaluator<F: Real, B: Backend<F> + ?Sized, const R: usize> {
+pub trait Evaluator<F: Real, B: Backend<F>, const R: usize> {
     fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R>;
+}
+
+pub trait Backward<F: Real, B: Backend<F>, const R: usize> {
+    type Input;
+
+    fn backward(&self, backend: &mut B, grad_output: Base<B::Repr, F, R>) -> Self::Input;
+}
+
+pub trait VJP<F: Real, B: Backend<F>, const R: usize>:
+    Evaluator<F, B, R> + Backward<F, B, R>
+{
 }
 
 impl<F: Real, B: Backend<F>, const RANK: usize> Evaluator<F, B, RANK> for Dense<F, RANK> {
