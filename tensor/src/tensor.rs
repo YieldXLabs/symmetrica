@@ -113,39 +113,6 @@ where
         }
     }
 }
-// TODO: provide a default shape type (like (), or a DynRank struct)
-// pub trait IntoTensor<F: Real, Sh: Shape, const R: usize> {
-//     type Expr;
-//     fn into_tensor(self) -> Tensor<F, Sh, R, Self::Expr>;
-// }
-
-// impl<F: Real, Sh: Shape, const N: usize> IntoTensor<F, Sh, 1> for [F; N] {
-//     type Expr = DenseExpr<Vec<F>, 1>;
-
-//     fn into_tensor(self) -> Tensor<F, Sh, 1, Self::Expr> {
-//         Tensor::from_vec(self.to_vec(), [N])
-//     }
-// }
-
-// impl<'a, F: Real, Sh: Shape> IntoTensor<F, Sh, 1> for &'a [F] {
-//     type Expr = DenseExpr<Vec<F>, 1>;
-
-//     fn into_tensor(self) -> Tensor<F, Sh, 1, Self::Expr> {
-//         Tensor::from_slice(self, [self.len()])
-//     }
-// }
-
-// impl<F: Real, Sh: Shape> IntoTensor<F, Sh, 1> for Vec<F> {
-//     type Expr = DenseExpr<Vec<F>, 1>;
-
-//     fn into_tensor(self) -> Tensor<F, Sh, 1, Self::Expr> {
-//         let len = self.len();
-//         Tensor::from_vec(self, [len])
-//     }
-// }
-
-// Tensor with dynamic/unknown axis labels
-// type DynamicTensor<const R: usize> = Tensor<TradingFloat, (Dynamic,), R>;
 
 #[doc(hidden)]
 #[macro_export]
