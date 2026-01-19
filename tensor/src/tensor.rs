@@ -125,13 +125,12 @@ impl<A> GradientTape<A> {
 }
 
 impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
-    /// Runs the computation and returns the result + a tape for differentiation.
     pub fn forward<B: Backend<F>>(
         &self,
         backend: &mut B,
     ) -> (Base<B::Repr, F, R>, GradientTape<E::Adjoint>)
     where
-        E: Differentiable<F, B, R>, // Requires the Differentiable trait we defined earlier
+        E: Differentiable<F, B, R>,
     {
         let (res, adjoint) = self.expr.forward(backend);
 
