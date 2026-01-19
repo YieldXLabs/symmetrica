@@ -41,19 +41,17 @@ impl<const N: usize> Shape for DynRank<N> {
 pub struct True;
 pub struct False;
 
-pub trait BoolTrait {
+pub trait Bool: 'static {
     const VALUE: bool;
 }
-impl BoolTrait for True {
+
+impl Bool for True {
     const VALUE: bool = true;
 }
-impl BoolTrait for False {
+
+impl Bool for False {
     const VALUE: bool = false;
 }
-
-pub trait Bool {}
-impl Bool for True {}
-impl Bool for False {}
 
 pub trait Or<Rhs> {
     type Result;
@@ -69,6 +67,28 @@ impl Or<True> for False {
 }
 impl Or<False> for False {
     type Result = False;
+}
+
+pub trait And<Rhs: Bool> {
+    type Result: Bool;
+}
+
+impl<Rhs: Bool> And<Rhs> for True {
+    type Result = Rhs;
+}
+
+impl<Rhs: Bool> And<Rhs> for False {
+    type Result = False;
+}
+
+pub struct IfThenElse<Cond: Bool, Then, Else>(PhantomData<(Cond, Then, Else)>);
+
+impl<Cond: Bool, Then: Bool, Else: Bool> Bool for IfThenElse<Cond, Then, Else> {
+    const VALUE: bool = if Cond::VALUE {
+        Then::VALUE
+    } else {
+        Else::VALUE
+    };
 }
 
 pub trait TypeEq<Other> {
