@@ -143,6 +143,10 @@ where
     const DOES_CONTAIN: bool = <Head as TypeEq<Target>>::Result::VALUE || Tail::DOES_CONTAIN;
 }
 
+pub trait BroadcastableTo<NewSh: Shape> {
+    type Output: Shape;
+}
+
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __generate_inequality {
