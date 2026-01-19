@@ -1,11 +1,4 @@
-use super::Real;
-
-pub trait Lift<F: Real> {
-    type Output;
-
-    fn lift(self) -> Self::Output;
-}
-
+// Free algebra expression types
 #[derive(Debug, Clone, Copy)]
 pub struct IdentityExpr;
 

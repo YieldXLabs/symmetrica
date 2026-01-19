@@ -1,5 +1,5 @@
-use super::{Differentiable, Evaluator, Pullback};
-use algebra::{AddExpr, Lift, Real, Shape};
+use super::{Differentiable, Evaluator, Lift, Pullback};
+use algebra::{AddExpr, Real, Shape};
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
 
