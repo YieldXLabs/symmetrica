@@ -95,6 +95,16 @@ impl<F: Real, const R: usize> Tensor<F, DynRank<R>, R, Dense<F, R>> {
     pub fn from_slice(data: &[F], shape: [usize; R]) -> Self {
         Self::from_vec(data.to_vec(), shape)
     }
+
+    pub fn attach_axes<Sh: Shape>(self) -> Tensor<F, Sh, R, Dense<F, R>> {
+        debug_assert_eq!(
+            Sh::RANK,
+            R,
+            "Rank mismatch between DynRank and semantic axes"
+        );
+
+        Tensor::wrap(self.expr)
+    }
 }
 
 impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, Dense<F, R>> {
@@ -111,16 +121,6 @@ impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
         Tensor::wrap(ScaleExpr {
             op: self.expr,
             factor,
-        })
-    }
-
-    pub fn broadcast<const R2: usize>(
-        self,
-        new_shape: [usize; R2],
-    ) -> Tensor<F, Sh, R2, BroadcastExpr<E, R, R2>> {
-        Tensor::wrap(BroadcastExpr {
-            op: self.expr,
-            target_shape: new_shape,
         })
     }
 
