@@ -1,6 +1,7 @@
 use core::fmt::Debug;
 use core::marker::PhantomData;
 
+// Core Types
 #[derive(Debug, Clone, Copy)]
 pub struct Nil;
 
@@ -11,23 +12,23 @@ pub trait Label: 'static + Copy + Clone + Debug + Send + Sync {
     fn name() -> &'static str;
 }
 
+// Shapes
 pub trait Shape {
     const RANK: usize;
     type Axes;
 }
 
-// 1. Base Case: Nil (Rank 0)
 impl Shape for Nil {
-    const RANK: usize = 99999;
+    const RANK: usize = 0;
     type Axes = Nil;
 }
-// 2. Recursive Case: Cons<H, T> (Rank 1 + T::RANK)
+
 impl<H: Label, T: Shape> Shape for Cons<H, T> {
     const RANK: usize = 1 + T::RANK;
     type Axes = Cons<H, T>;
 }
 
-// Dynamic Rank Shape
+// Dynamic Fallback
 #[derive(Debug, Clone, Copy)]
 pub struct DynRank<const N: usize>;
 
@@ -36,29 +37,38 @@ impl<const N: usize> Shape for DynRank<N> {
     type Axes = Nil;
 }
 
-// Logic engine for type-level equality and indexing
+// Logic engine (internal)
 pub struct True;
 pub struct False;
+
+pub trait BoolTrait {
+    const VALUE: bool;
+}
+impl BoolTrait for True {
+    const VALUE: bool = true;
+}
+impl BoolTrait for False {
+    const VALUE: bool = false;
+}
 
 pub trait TypeEq<Other> {
     type Result;
 }
-
-// Case: Match (A == A) -> True
 impl<T> TypeEq<T> for T {
     type Result = True;
 }
 
+// Search engine for IndexOf
 pub trait IndexOfFinder<Target, MatchResult> {
     const VALUE: usize;
 }
 
-// Case: Found
+// Case: Match Found
 impl<Target, Head, Tail> IndexOfFinder<Target, True> for Cons<Head, Tail> {
     const VALUE: usize = 0;
 }
 
-// Case: Not Found (Recurse)
+// Case: No Match (Recurse)
 impl<Target, Head, Tail> IndexOfFinder<Target, False> for Cons<Head, Tail>
 where
     Tail: IndexOf<Target>,
@@ -68,10 +78,6 @@ where
 
 pub trait IndexOf<Target> {
     const INDEX: usize;
-}
-
-impl<Target> IndexOf<Target> for Nil {
-    const INDEX: usize = 0; // Or panic!("Label not found in shape")
 }
 
 impl<Target, Head, Tail> IndexOf<Target> for Cons<Head, Tail>
@@ -84,6 +90,7 @@ where
         <Cons<Head, Tail> as IndexOfFinder<Target, <Head as TypeEq<Target>>::Result>>::VALUE;
 }
 
+// Remove
 pub trait RemoveFinder<Target, MatchResult> {
     type Remainder: Shape;
 }
@@ -117,27 +124,16 @@ where
         <Cons<Head, Tail> as RemoveFinder<Target, <Head as TypeEq<Target>>::Result>>::Remainder;
 }
 
-// Helper trait to convert Type -> Bool
-pub trait BoolTrait {
-    const VALUE: bool;
-}
-impl BoolTrait for True {
-    const VALUE: bool = true;
-}
-impl BoolTrait for False {
-    const VALUE: bool = false;
-}
-
+// Contains
+// e.g. const { assert!(Sh::DOES_CONTAIN, "Label not found in Shape!") };
 pub trait Contains<Target> {
     const DOES_CONTAIN: bool;
 }
 
-// Base Case: Nil contains nothing
 impl<Target> Contains<Target> for Nil {
     const DOES_CONTAIN: bool = false;
 }
 
-// Recursive Case
 impl<Target, Head, Tail> Contains<Target> for Cons<Head, Tail>
 where
     Head: TypeEq<Target>,
@@ -147,53 +143,29 @@ where
     const DOES_CONTAIN: bool = <Head as TypeEq<Target>>::Result::VALUE || Tail::DOES_CONTAIN;
 }
 
-// const { assert!(Sh::DOES_CONTAIN, "Label not found in Shape!") };
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __generate_inequality {
+    () => {};
+    ($head:ident, $($tail:ident),*) => {
+        $(
+            impl $crate::symbolic::TypeEq<$tail> for $head { type Result = $crate::symbolic::False; }
+            impl $crate::symbolic::TypeEq<$head> for $tail { type Result = $crate::symbolic::False; }
+        )*
+        $crate::__generate_inequality!($($tail),*);
+    };
+}
 
-// pub trait Broadcast<Rhs> {
-//     type Output;
-// }
-
-// pub trait Reshape<NewShape> {
-//     type Output;
-// }
-
-// pub trait Permute<NewOrder> {
-//     type Output;
-// }
-
-// #[macro_export]
-// macro_rules! make_labels {
-//     ($($name:ident),*) => {
-//         $(
-//             #[derive(Debug, Clone, Copy)]
-//             pub struct $name;
-//             impl Label for $name {
-//                 fn name() -> &'static str { stringify!($name) }
-//             }
-
-//             // Allow comparison against other types (False case)
-//             // We use a specific trick: We implement TypeEq<T> for Name
-//             // This is a "catch-all" that returns False.
-//             // The specific `impl<T> TypeEq<T> for T` (True) defined above takes precedence
-//             // because concrete implementations beat blanket ones in this specific context
-//             // OR we rely on the specific `impl TypeEq<Other> for Name` generated below.
-//         )*
-
-//         // Generate explicit False implementations for every pair to ensure stability
-//         $crate::generate_inequality!($($name),*);
-//     };
-// }
-
-// #[macro_export]
-// macro_rules! generate_inequality {
-//     // Base case
-//     () => {};
-//     // Recursive case
-//     ($head:ident, $($tail:ident),*) => {
-//         $(
-//             impl $crate::TypeEq<$tail> for $head { type Result = $crate::False; }
-//             impl $crate::TypeEq<$head> for $tail { type Result = $crate::False; }
-//         )*
-//         $crate::generate_inequality!($($tail),*);
-//     };
-// }
+#[macro_export]
+macro_rules! make_labels {
+    ($($name:ident),*) => {
+        $(
+            #[derive(Debug, Clone, Copy)]
+            pub struct $name;
+            impl $crate::symbolic::Label for $name {
+                fn name() -> &'static str { stringify!($name) }
+            }
+        )*
+        $crate::__generate_inequality!($($name),*);
+    };
+}
