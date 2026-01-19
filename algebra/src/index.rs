@@ -38,6 +38,49 @@ impl<const N: usize> Shape for DynRank<N> {
     type Axes = ();
 }
 
+// pub struct True;
+// pub struct False;
+
+// pub trait TypeEq<Other> {
+//     type Result;
+// }
+
+// impl<T> TypeEq<T> for T {
+//     type Result = True;
+// }
+
+// pub trait IndexOf<Target: Label> {
+//     const INDEX: usize;
+// }
+
+// pub trait IndexOfFinder<Target, IsMatch> {
+//     const VALUE: usize;
+// }
+
+// // Case A: Match Found! (Index is 0)
+// impl<Target, Head, Tail> IndexOfFinder<Target, True> for Cons<Head, Tail> {
+//     const VALUE: usize = 0;
+// }
+
+// // Case B: No Match, Recurse! (Index is 1 + Tail search)
+// impl<Target, Head, Tail> IndexOfFinder<Target, False> for Cons<Head, Tail>
+// where
+//     Tail: IndexOf<Target>, // Recursive Step
+// {
+//     const VALUE: usize = 1 + Tail::INDEX;
+// }
+
+// // Main Entry Point
+// impl<Target, Head, Tail> IndexOf<Target> for Cons<Head, Tail>
+// where
+//     Target: Label,
+//     Head: Label + TypeEq<Target>, // Check equality
+//     Cons<Head, Tail>: IndexOfFinder<Target, <Head as TypeEq<Target>>::Result>,
+// {
+//     const INDEX: usize = <Cons<Head, Tail> as IndexOfFinder<Target, <Head as TypeEq<Target>>::Result>>::VALUE;
+// }
+
+
 // We can implement a conversion to panic if users try to use symbolic ops on DynRank
 // impl<const N: usize> IndexOf<Batch> for DynRank<N> {
 //     const INDEX: usize = 0; // Fallback or Compile Error
