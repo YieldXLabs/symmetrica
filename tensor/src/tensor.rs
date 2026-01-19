@@ -1,5 +1,5 @@
 use super::{Differentiable, Evaluator, GradientTape, LeafAdjoint, Lift};
-use algebra::{Real, ScaleExpr, Shape};
+use algebra::{BroadcastExpr, Real, ScaleExpr, Shape};
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
 
@@ -111,6 +111,16 @@ impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
         Tensor::wrap(ScaleExpr {
             op: self.expr,
             factor,
+        })
+    }
+
+    pub fn broadcast<const R2: usize>(
+        self,
+        new_shape: [usize; R2],
+    ) -> Tensor<F, Sh, R2, BroadcastExpr<E, R, R2>> {
+        Tensor::wrap(BroadcastExpr {
+            op: self.expr,
+            target_shape: new_shape,
         })
     }
 
