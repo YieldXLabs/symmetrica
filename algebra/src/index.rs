@@ -1,5 +1,5 @@
-use std::fmt::Debug;
-use std::marker::PhantomData;
+use core::fmt::Debug;
+use core::marker::PhantomData;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Nil;
@@ -16,23 +16,42 @@ pub trait Shape {
     type Axes;
 }
 
-impl Shape for Nil {
-    const RANK: usize = 0;
-    type Axes = Nil;
-}
+// pub trait Contains<A> {}
 
-impl<H: Label, T: Shape> Shape for Cons<H, T> {
-    const RANK: usize = 1 + T::RANK;
-    type Axes = Cons<H, T>;
-}
+// impl<A, T> Contains<A> for Cons<A, T> {}
+// impl<A, H, T> Contains<A> for Cons<H, T>
+// where
+//     T: Contains<A>,
+// {}
 
-pub trait IndexOf<A: Label> {
-    const POS: usize;
-}
+// pub trait IndexOf<A>: Contains<A> {
+//     const INDEX: usize;
+// }
 
-impl<A: Label, T> IndexOf<A> for Cons<A, T> {
-    const POS: usize = 0;
-}
+// impl<A, T> IndexOf<A> for Cons<A, T> {
+//     const INDEX: usize = 0;
+// }
+
+// impl<A, H, T> IndexOf<A> for Cons<H, T>
+// where
+//     T: IndexOf<A>,
+// {
+//     const INDEX: usize = 1 + T::INDEX;
+// }
+
+// impl Shape for Nil {
+//     const RANK: usize = 0;
+//     type Axes = Nil;
+// }
+
+// impl<H: Label, T: Shape> Shape for Cons<H, T> {
+//     const RANK: usize = 1 + T::RANK;
+//     type Axes = Cons<H, T>;
+// }
+
+// pub trait AxisValue<A: Label> {
+//     fn index(self) -> usize;
+// }
 
 // impl<A: Label, H: Label, T> IndexOf<A> for Cons<H, T>
 // where
