@@ -93,6 +93,15 @@ impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
     {
         self.expr.eval(backend)
     }
+
+    pub fn to_vec<B: Backend<F>>(&self, backend: &mut B) -> Vec<F>
+    where
+        E: Evaluator<F, B, R>,
+    {
+        let view = self.expr.eval(backend);
+
+        backend.to_host(&view.storage)
+    }
 }
 
 pub struct GradientTape<A> {
