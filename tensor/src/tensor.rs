@@ -105,17 +105,6 @@ impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
         self.expr.eval(backend)
     }
 
-    pub fn to_vec<B: Backend<F>>(&self, backend: &mut B) -> Vec<F>
-    where
-        E: Evaluator<F, B, R>,
-    {
-        let view = self.expr.eval(backend);
-
-        backend.to_host(&view.storage)
-    }
-}
-
-impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
     pub fn forward<B: Backend<F>>(
         &self,
         backend: &mut B,
@@ -126,6 +115,15 @@ impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
         let (res, adjoint) = self.expr.forward(backend);
 
         (res, GradientTape::new(adjoint))
+    }
+
+    pub fn to_vec<B: Backend<F>>(&self, backend: &mut B) -> Vec<F>
+    where
+        E: Evaluator<F, B, R>,
+    {
+        let view = self.expr.eval(backend);
+
+        backend.to_host(&view.storage)
     }
 }
 
