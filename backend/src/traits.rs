@@ -34,7 +34,7 @@ pub trait Backend<F: Real> {
 
     fn pure(&mut self, data: &[F]) -> Self::Repr;
 
-    fn to_host(&mut self, device_data: &Self::Repr) -> Vec<F>;
+    fn scale(&mut self, input: &Self::Repr, factor: F) -> Self::Repr;
 
     fn unary<K: UnaryKernel<F>>(&mut self, input: &Self::Repr) -> Self::Repr;
 
@@ -43,4 +43,6 @@ pub trait Backend<F: Real> {
     fn reduce<K: ReduceKernel<F>>(&mut self, input: &Self::Repr) -> F;
 
     fn stream<K: StreamKernel<F>>(&mut self, input: &Self::Repr, kernel: K) -> Self::Repr;
+
+    fn to_host(&mut self, device_data: &Self::Repr) -> Vec<F>;
 }
