@@ -34,6 +34,23 @@ impl<F: Real> Backend<F> for GenericBackend<F> {
         storage
     }
 
+    fn to_host(&mut self, device_data: &Self::Repr) -> Vec<F> {
+        let mut host_vec = Vec::with_capacity(device_data.len());
+
+        let src_slice = device_data.as_slice();
+
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                src_slice.as_ptr(),
+                host_vec.as_mut_ptr(),
+                device_data.len(),
+            );
+            host_vec.set_len(device_data.len());
+        }
+
+        host_vec
+    }
+
     fn unary<K: UnaryKernel<F>>(&mut self, input: &Self::Repr) -> Self::Repr {
         let mut output = Self::Repr::alloc(input.len());
         let input_slice = input.as_slice();

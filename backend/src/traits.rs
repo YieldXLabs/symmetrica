@@ -34,6 +34,8 @@ pub trait Backend<F: Real> {
 
     fn pure(&mut self, data: &[F]) -> Self::Repr;
 
+    fn to_host(&mut self, device_data: &Self::Repr) -> Vec<F>;
+
     fn unary<K: UnaryKernel<F>>(&mut self, input: &Self::Repr) -> Self::Repr;
 
     fn binary<K: BinaryKernel<F>>(&mut self, lhs: &Self::Repr, rhs: &Self::Repr) -> Self::Repr;
