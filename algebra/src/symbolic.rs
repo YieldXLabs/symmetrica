@@ -148,6 +148,30 @@ pub trait Union<Rhs: Shape> {
     type Output: Shape;
 }
 
+pub trait TupleAxes {
+    type Axes;
+}
+
+impl<A: Label> TupleAxes for (A,) {
+    type Axes = Cons<A, Nil>;
+}
+
+impl<A: Label, B: Label> TupleAxes for (A, B) {
+    type Axes = Cons<A, Cons<B, Nil>>;
+}
+
+impl<A: Label, B: Label, C: Label> TupleAxes for (A, B, C) {
+    type Axes = Cons<A, Cons<B, Cons<C, Nil>>>;
+}
+
+impl<T> Shape for T
+where
+    T: TupleAxes,
+{
+    const RANK: usize = 0 + core::mem::size_of::<T>() / core::mem::size_of::<()>();
+    type Axes = <T as TupleAxes>::Axes;
+}
+
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __generate_inequality {
