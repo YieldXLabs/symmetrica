@@ -140,6 +140,31 @@ pub struct EqExpr<L, R> {
     pub right: R,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct BroadcastExpr<Op, const R_IN: usize, const R_OUT: usize> {
+    pub op: Op,
+    pub target_shape: [usize; R_OUT],
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct TransposeExpr<Op, const R: usize> {
+    pub op: Op,
+    pub perm: [usize; R],
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ReshapeExpr<Op, const R_IN: usize, const R_OUT: usize> {
+    pub op: Op,
+    pub new_shape: [usize; R_OUT],
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SelectExpr<Op> {
+    pub op: Op,
+    pub axis: usize,
+    pub index: usize,
+}
+
 // TODO: Distance metrics
 // pub trait DistanceMetric<F: Real>: Copy + Clone + 'static {}
 
