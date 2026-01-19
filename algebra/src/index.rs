@@ -70,6 +70,10 @@ pub trait IndexOf<Target> {
     const INDEX: usize;
 }
 
+impl<Target> IndexOf<Target> for Nil {
+    const INDEX: usize = 0; // Or panic!("Label not found in shape")
+}
+
 impl<Target, Head, Tail> IndexOf<Target> for Cons<Head, Tail>
 where
     Target: Label,
