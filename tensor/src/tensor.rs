@@ -150,12 +150,6 @@ where
     }
 }
 
-// pub trait Differentiable<F: Real> {
-//     type Grad;
-
-//     fn grad(self) -> Self::Grad;
-// }
-
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __count {
