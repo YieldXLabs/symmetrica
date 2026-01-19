@@ -109,7 +109,6 @@ pub struct GradientTape<A> {
 }
 
 impl<A> GradientTape<A> {
-    /// Consumes the tape to produce gradients
     pub fn backward<F, B, const R: usize>(
         self,
         backend: &mut B,
