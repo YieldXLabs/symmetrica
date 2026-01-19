@@ -1,4 +1,4 @@
-use super::{Differentiable, Evaluator, GradientTape, Lift};
+use super::{Differentiable, Evaluator, GradientTape, LeafAdjoint, Lift};
 use algebra::{Real, Shape};
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
@@ -51,6 +51,15 @@ impl<S, F, const R: usize> Base<S, F, R> {
 }
 
 pub type Dense<F, const R: usize> = Base<Arc<Vec<F>>, F, R>;
+
+impl<F: Real, B: Backend<F>, const R: usize> Differentiable<F, B, R> for Dense<F, R> {
+    type Adjoint = LeafAdjoint;
+
+    fn forward(&self, backend: &mut B) -> (Base<B::Repr, F, R>, Self::Adjoint) {
+        let res = self.eval(backend);
+        (res, LeafAdjoint)
+    }
+}
 
 // TODO: implement toeplitz(), zeros(), ones(), full(), eye()
 // TODO: implement slice over axes
