@@ -11,6 +11,8 @@ pub trait Label: 'static + Copy + Clone + Debug + Send + Sync {
     fn name() -> &'static str;
 }
 
+
+// TODO: DynShape struct that implements your Shape trait but holds Vec<usize> at runtime.
 pub trait Shape {
     const RANK: usize;
     type Axes;
