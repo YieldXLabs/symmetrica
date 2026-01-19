@@ -143,22 +143,11 @@ where
     const DOES_CONTAIN: bool = <Head as TypeEq<Target>>::Result::VALUE || Tail::DOES_CONTAIN;
 }
 
-pub trait BroadcastableTo<NewSh: Shape> {
+// Union
+pub trait Union<Rhs: Shape> {
     type Output: Shape;
 }
 
-impl<NewSh: Shape> BroadcastableTo<NewSh> for Nil {
-    type Output = NewSh;
-}
-
-impl<Head, Tail, NewSh: Shape> BroadcastableTo<NewSh> for Cons<Head, Tail>
-where
-    Head: Label,
-    NewSh: Contains<Head>,
-    Tail: BroadcastableTo<NewSh>,
-{
-    type Output = NewSh;
-}
 
 
 #[doc(hidden)]
