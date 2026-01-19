@@ -37,6 +37,14 @@ impl TradingFloat {
             self.0.to_bits()
         }
     }
+
+    pub fn to_f64(self) -> f64 {
+        self.0
+    }
+
+    pub fn to_f32(self) -> f32 {
+        self.0 as f32
+    }
 }
 
 impl Default for TradingFloat {

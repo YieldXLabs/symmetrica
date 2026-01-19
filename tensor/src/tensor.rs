@@ -1,5 +1,5 @@
 use super::{Differentiable, Evaluator, GradientTape, LeafAdjoint, Lift};
-use algebra::{BroadcastExpr, Real, ScaleExpr, Shape};
+use algebra::{BroadcastExpr, DynRank, Real, ScaleExpr, Shape};
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
 
@@ -86,18 +86,18 @@ impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
     }
 }
 
-impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, Dense<F, R>> {
+impl<F: Real, const R: usize> Tensor<F, DynRank<R>, R, Dense<F, R>> {
     pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Self {
-        debug_assert_eq!(R, Sh::RANK);
         debug_assert_eq!(data.len(), shape.iter().product::<usize>());
-
         Tensor::wrap(Dense::new(Arc::new(data), shape))
     }
 
     pub fn from_slice(data: &[F], shape: [usize; R]) -> Self {
         Self::from_vec(data.to_vec(), shape)
     }
+}
 
+impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, Dense<F, R>> {
     pub fn from_expr<L>(input: L) -> Tensor<F, Sh, R, L::Output>
     where
         L: Lift<F>,
@@ -168,6 +168,7 @@ macro_rules! __count {
 #[macro_export]
 macro_rules! __flatten_1d {
     ($vec:ident; $($x:expr),* $(,)?) => {{
+        use ::algebra::TradingFloat;
         $(
             $vec.push(TradingFloat::try_from($x).expect("Invalid float"));
         )*
@@ -187,14 +188,16 @@ macro_rules! __flatten_2d {
 #[macro_export]
 macro_rules! tensor {
     ($($x:expr),+ $(,)?) => {{
-        let mut data = Vec::new();
+        use ::algebra::TradingFloat;
+        let mut data = Vec::<TradingFloat>::new();
         $crate::__flatten_1d!(data; $($x),*);
         let shape = [$crate::__count!($($x),*)];
         Tensor::from_vec(data, shape)
     }};
 
     ([$([$($x:expr),* $(,)?]),+ $(,)?]) => {{
-        let mut data = Vec::new();
+        use ::algebra::TradingFloat;
+        let mut data = Vec::<TradingFloat>::new();
         $crate::__flatten_2d!(data; $([$($x),*]),*);
         let rows = $crate::__count!($([$($x),*]),*);
         let cols = $crate::__count!($($x),*);
@@ -206,29 +209,21 @@ macro_rules! tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use algebra::{Shape, TradingFloat};
+    use algebra::TradingFloat;
     use backend::GenericBackend;
-
-    struct TestShape;
-    impl Shape for TestShape {
-        const RANK: usize = 1;
-        type Axes = ();
-    }
 
     #[test]
     fn test_tensor_add() {
         let mut backend = GenericBackend::<TradingFloat>::new();
-        let a: Tensor<TradingFloat, TestShape, 1> = tensor![2.0, 3.0, 5.0];
-        let b: Tensor<TradingFloat, TestShape, 1> = tensor![1.0, 3.0, 2.0];
+        let a = tensor![2.0, 3.0, 5.0];
+        let b = tensor![1.0, 3.0, 2.0];
 
         let c = a + b;
 
-        let result = c.collect(&mut backend);
+        let result = c.to_vec(&mut backend);
 
-        assert_eq!(
-            result.shape,
-            [3],
-            "Result shape should be [3] for vector addition"
-        );
+        assert_eq!(result[0].to_f64(), 3.0);
+        assert_eq!(result[1].to_f64(), 6.0);
+        assert_eq!(result[2].to_f64(), 7.0);
     }
 }
