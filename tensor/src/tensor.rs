@@ -1,5 +1,5 @@
 use super::{Differentiable, Evaluator, GradientTape, LeafAdjoint, Lift};
-use algebra::{Real, Shape};
+use algebra::{Real, ScaleExpr, Shape};
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
 
@@ -107,6 +107,13 @@ impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, Dense<F, R>> {
 }
 
 impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
+    pub fn scale(self, factor: F) -> Tensor<F, Sh, R, ScaleExpr<E, F>> {
+        Tensor::wrap(ScaleExpr {
+            op: self.expr,
+            factor,
+        })
+    }
+
     pub fn collect<B: Backend<F>>(&self, backend: &mut B) -> Base<B::Repr, F, R>
     where
         E: Evaluator<F, B, R>,
