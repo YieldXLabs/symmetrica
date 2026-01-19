@@ -51,6 +51,26 @@ impl BoolTrait for False {
     const VALUE: bool = false;
 }
 
+pub trait Bool {}
+impl Bool for True {}
+impl Bool for False {}
+
+pub trait Or<Rhs> {
+    type Result;
+}
+impl Or<True> for True {
+    type Result = True;
+}
+impl Or<False> for True {
+    type Result = True;
+}
+impl Or<True> for False {
+    type Result = True;
+}
+impl Or<False> for False {
+    type Result = False;
+}
+
 pub trait TypeEq<Other> {
     type Result;
 }
@@ -127,25 +147,59 @@ where
 // Contains
 // e.g. const { assert!(Sh::DOES_CONTAIN, "Label not found in Shape!") };
 pub trait Contains<Target> {
-    const DOES_CONTAIN: bool;
+    type Result;
 }
 
 impl<Target> Contains<Target> for Nil {
-    const DOES_CONTAIN: bool = false;
+    type Result = False;
 }
 
 impl<Target, Head, Tail> Contains<Target> for Cons<Head, Tail>
 where
     Head: TypeEq<Target>,
-    <Head as TypeEq<Target>>::Result: BoolTrait,
     Tail: Contains<Target>,
+    <Head as TypeEq<Target>>::Result: Or<<Tail as Contains<Target>>::Result>,
 {
-    const DOES_CONTAIN: bool = <Head as TypeEq<Target>>::Result::VALUE || Tail::DOES_CONTAIN;
+    type Result =
+        <<Head as TypeEq<Target>>::Result as Or<<Tail as Contains<Target>>::Result>>::Result;
+}
+// Union
+pub trait AddUnique<L>: Shape {
+    type Output: Shape;
 }
 
-// Union
+pub trait AddUniqueImpl<L, Flag: Bool> {
+    type Output: Shape;
+}
+
+impl<L, List> AddUniqueImpl<L, True> for List
+where
+    List: Shape,
+{
+    type Output = List;
+}
+
+impl<L: Label, List> AddUniqueImpl<L, False> for List
+where
+    List: Shape,
+{
+    type Output = Cons<L, List>;
+}
+
 pub trait Union<Rhs: Shape> {
     type Output: Shape;
+}
+
+impl<Rhs: Shape> Union<Rhs> for Nil {
+    type Output = Rhs;
+}
+
+impl<H, T, Rhs: Shape> Union<Rhs> for Cons<H, T>
+where
+    T: Shape + Union<Rhs>,
+    <T as Union<Rhs>>::Output: AddUnique<H>,
+{
+    type Output = <<T as Union<Rhs>>::Output as AddUnique<H>>::Output;
 }
 
 #[doc(hidden)]
