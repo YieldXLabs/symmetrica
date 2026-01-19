@@ -137,26 +137,6 @@ impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
     }
 }
 
-use std::ops::Add;
-
-impl<F, Sh, const R: usize, L, Rhs> Add<Tensor<F, Sh, R, Rhs>> for Tensor<F, Sh, R, L>
-where
-    F: Real,
-    Sh: Shape,
-{
-    type Output = Tensor<F, Sh, R, AddExpr<L, Rhs>>;
-
-    fn add(self, rhs: Tensor<F, Sh, R, Rhs>) -> Self::Output {
-        Tensor {
-            expr: AddExpr {
-                left: self.expr,
-                right: rhs.expr,
-            },
-            _marker: PhantomData,
-        }
-    }
-}
-
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __count {

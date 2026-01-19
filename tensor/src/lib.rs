@@ -6,3 +6,5 @@ pub mod eval;
 pub use eval::*;
 pub mod lift;
 pub use lift::*;
+pub mod ops;
+pub use ops::*;
