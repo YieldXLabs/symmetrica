@@ -77,3 +77,6 @@ pub trait Shape {
 //     const INDEX: usize = 0;
 //     type Remainder = ();
 // }
+
+// Symbolic Layer: The Architect. It draws the blueprints, checks the physics, and deletes redundant rooms (optimizations) before construction begins.
+// Host/Device Layer: The Construction Crew. They blindly follow the blueprint. Because the Architect (Symbolic Layer) did its job, the crew never tries to fit a square peg in a round hole (Shape Mismatch) or build a wall twice (Redundant Computation).
