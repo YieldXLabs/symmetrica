@@ -7,6 +7,9 @@ pub trait Lift<F: Real> {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct IdentityExpr;
+
+#[derive(Debug, Clone, Copy)]
 pub struct ConstExpr<F>(pub F);
 
 #[derive(Debug, Clone, Copy)]
