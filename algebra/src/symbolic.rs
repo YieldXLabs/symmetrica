@@ -148,8 +148,6 @@ pub trait Union<Rhs: Shape> {
     type Output: Shape;
 }
 
-
-
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __generate_inequality {
@@ -174,5 +172,13 @@ macro_rules! make_labels {
             }
         )*
         $crate::__generate_inequality!($($name),*);
+    };
+}
+
+#[macro_export]
+macro_rules! Axes {
+    () => { $crate::symbolic::Nil };
+    ($head:ty $(, $tail:ty)* $(,)?) => {
+        $crate::symbolic::Cons<$head, Axes!($($tail),*)>
     };
 }
