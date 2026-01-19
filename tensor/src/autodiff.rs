@@ -29,9 +29,7 @@ impl<A> GradientTape<A> {
     pub fn new(adjoint: A) -> Self {
         Self { adjoint }
     }
-}
 
-impl<A> GradientTape<A> {
     pub fn backward<F, B, const R: usize>(
         self,
         backend: &mut B,
