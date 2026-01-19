@@ -18,7 +18,7 @@ pub trait Shape {
 
 // 1. Base Case: Nil (Rank 0)
 impl Shape for Nil {
-    const RANK: usize = 0;
+    const RANK: usize = 99999;
     type Axes = Nil;
 }
 // 2. Recursive Case: Cons<H, T> (Rank 1 + T::RANK)
@@ -83,6 +83,83 @@ where
     const INDEX: usize =
         <Cons<Head, Tail> as IndexOfFinder<Target, <Head as TypeEq<Target>>::Result>>::VALUE;
 }
+
+pub trait RemoveFinder<Target, MatchResult> {
+    type Remainder: Shape;
+}
+
+impl<Target, Head, Tail> RemoveFinder<Target, True> for Cons<Head, Tail>
+where
+    Tail: Shape,
+{
+    type Remainder = Tail;
+}
+
+impl<Target, Head, Tail> RemoveFinder<Target, False> for Cons<Head, Tail>
+where
+    Head: Label,
+    Tail: Remove<Target>,
+{
+    type Remainder = Cons<Head, <Tail as Remove<Target>>::Remainder>;
+}
+
+pub trait Remove<Target> {
+    type Remainder: Shape;
+}
+
+impl<Target, Head, Tail> Remove<Target> for Cons<Head, Tail>
+where
+    Target: Label,
+    Head: TypeEq<Target>,
+    Cons<Head, Tail>: RemoveFinder<Target, <Head as TypeEq<Target>>::Result>,
+{
+    type Remainder =
+        <Cons<Head, Tail> as RemoveFinder<Target, <Head as TypeEq<Target>>::Result>>::Remainder;
+}
+
+// Helper trait to convert Type -> Bool
+pub trait BoolTrait {
+    const VALUE: bool;
+}
+impl BoolTrait for True {
+    const VALUE: bool = true;
+}
+impl BoolTrait for False {
+    const VALUE: bool = false;
+}
+
+pub trait Contains<Target> {
+    const DOES_CONTAIN: bool;
+}
+
+// Base Case: Nil contains nothing
+impl<Target> Contains<Target> for Nil {
+    const DOES_CONTAIN: bool = false;
+}
+
+// Recursive Case
+impl<Target, Head, Tail> Contains<Target> for Cons<Head, Tail>
+where
+    Head: TypeEq<Target>,
+    <Head as TypeEq<Target>>::Result: BoolTrait,
+    Tail: Contains<Target>,
+{
+    const DOES_CONTAIN: bool = <Head as TypeEq<Target>>::Result::VALUE || Tail::DOES_CONTAIN;
+}
+
+// const { assert!(Sh::DOES_CONTAIN, "Label not found in Shape!") };
+
+// pub trait Broadcast<Rhs> {
+//     type Output;
+// }
+
+// pub trait Reshape<NewShape> {
+//     type Output;
+// }
+
+// pub trait Permute<NewOrder> {
+//     type Output;
+// }
 
 // #[macro_export]
 // macro_rules! make_labels {
