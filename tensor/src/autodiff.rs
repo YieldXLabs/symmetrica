@@ -1,12 +1,23 @@
-use super::{Base, LeafAdjoint, Pullback};
+use super::{Base, Dense, Differentiable, Evaluator, Pullback};
 use algebra::Real;
 use backend::Backend;
 
-impl<F: Real, B: Backend<F>, const R: usize> Pullback<F, B, R> for LeafAdjoint {
-    type Gradients = ();
+pub struct LeafAdjoint;
 
-    fn back(&self, _b: &mut B, _g: Base<B::Repr, F, R>) -> () {
-        ()
+impl<F: Real, B: Backend<F>, const R: usize> Differentiable<F, B, R> for Dense<F, R> {
+    type Adjoint = LeafAdjoint;
+
+    fn forward(&self, backend: &mut B) -> (Base<B::Repr, F, R>, Self::Adjoint) {
+        let res = self.eval(backend);
+        (res, LeafAdjoint)
+    }
+}
+
+impl<F: Real, B: Backend<F>, const R: usize> Pullback<F, B, R> for LeafAdjoint {
+    type Gradients = Base<B::Repr, F, R>;
+
+    fn back(&self, _backend: &mut B, grad: Base<B::Repr, F, R>) -> Self::Gradients {
+        grad
     }
 }
 
