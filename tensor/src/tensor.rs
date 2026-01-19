@@ -52,15 +52,6 @@ impl<S, F, const R: usize> Base<S, F, R> {
 
 pub type Dense<F, const R: usize> = Base<Arc<Vec<F>>, F, R>;
 
-impl<F: Real, B: Backend<F>, const R: usize> Differentiable<F, B, R> for Dense<F, R> {
-    type Adjoint = LeafAdjoint;
-
-    fn forward(&self, backend: &mut B) -> (Base<B::Repr, F, R>, Self::Adjoint) {
-        let res = self.eval(backend);
-        (res, LeafAdjoint)
-    }
-}
-
 // TODO: implement toeplitz(), zeros(), ones(), full(), eye()
 // TODO: implement slice over axes
 #[derive(Debug, Clone)]
@@ -92,6 +83,15 @@ impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, Dense<F, R>> {
             expr: input.lift(),
             _marker: PhantomData,
         }
+    }
+}
+
+impl<F: Real, B: Backend<F>, const R: usize> Differentiable<F, B, R> for Dense<F, R> {
+    type Adjoint = LeafAdjoint;
+
+    fn forward(&self, backend: &mut B) -> (Base<B::Repr, F, R>, Self::Adjoint) {
+        let res = self.eval(backend);
+        (res, LeafAdjoint)
     }
 }
 
