@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use super::Real;
 
 pub trait Lift<F: Real> {

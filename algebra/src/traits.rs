@@ -1,7 +1,7 @@
-use std::cmp::Ord;
-use std::fmt::Debug;
-use std::iter::{Product, Sum};
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use core::cmp::Ord;
+use core::fmt::Debug;
+use core::iter::{Product, Sum};
+use core::ops::{Add, Div, Mul, Neg, Sub};
 
 // 0. Identity
 // The additive identity (0)

@@ -1,9 +1,9 @@
 use super::{AdditiveGroup, Discretization, Field, One, OrderedField, Real, Ring, Zero};
-use std::cmp::Ordering;
-use std::fmt::{self, Display};
-use std::hash::{Hash, Hasher};
-use std::iter::{Product, Sum};
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use core::cmp::Ordering;
+use core::fmt::{self, Display};
+use core::hash::{Hash, Hasher};
+use core::iter::{Product, Sum};
+use core::ops::{Add, Div, Mul, Neg, Sub};
 
 /// TradingFloat is a total-order, hashable floating-point scalar.
 /// Invariants:
