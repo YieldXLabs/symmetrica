@@ -1,9 +1,23 @@
-use super::{Base, Differentiable, Pullback, Tensor};
-use algebra::{Real, Shape};
+use super::{Base, LeafAdjoint, Pullback};
+use algebra::Real;
 use backend::Backend;
+
+impl<F: Real, B: Backend<F>, const R: usize> Pullback<F, B, R> for LeafAdjoint {
+    type Gradients = ();
+
+    fn back(&self, _b: &mut B, _g: Base<B::Repr, F, R>) -> () {
+        ()
+    }
+}
 
 pub struct GradientTape<A> {
     adjoint: A,
+}
+
+impl<A> GradientTape<A> {
+    pub fn new(adjoint: A) -> Self {
+        Self { adjoint }
+    }
 }
 
 impl<A> GradientTape<A> {
@@ -18,19 +32,5 @@ impl<A> GradientTape<A> {
         A: Pullback<F, B, R>,
     {
         self.adjoint.back(backend, seed_grad)
-    }
-}
-
-impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
-    pub fn forward<B: Backend<F>>(
-        &self,
-        backend: &mut B,
-    ) -> (Base<B::Repr, F, R>, GradientTape<E::Adjoint>)
-    where
-        E: Differentiable<F, B, R>,
-    {
-        let (res, adjoint) = self.expr.forward(backend);
-
-        (res, GradientTape { adjoint })
     }
 }

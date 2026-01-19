@@ -1,4 +1,4 @@
-use super::{Evaluator, Lift};
+use super::{Differentiable, Evaluator, GradientTape, Lift};
 use algebra::{Real, Shape};
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
@@ -52,6 +52,17 @@ impl<S, F, const R: usize> Base<S, F, R> {
 
 pub type Dense<F, const R: usize> = Base<Arc<Vec<F>>, F, R>;
 
+pub struct LeafAdjoint;
+
+impl<F: Real, B: Backend<F>, const R: usize> Differentiable<F, B, R> for Dense<F, R> {
+    type Adjoint = LeafAdjoint;
+
+    fn forward(&self, backend: &mut B) -> (Base<B::Repr, F, R>, Self::Adjoint) {
+        let res = self.eval(backend);
+        (res, LeafAdjoint)
+    }
+}
+
 // TODO: implement toeplitz(), zeros(), ones(), full(), eye()
 // TODO: implement slice over axes
 #[derive(Debug, Clone)]
@@ -101,6 +112,20 @@ impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
         let view = self.expr.eval(backend);
 
         backend.to_host(&view.storage)
+    }
+}
+
+impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
+    pub fn forward<B: Backend<F>>(
+        &self,
+        backend: &mut B,
+    ) -> (Base<B::Repr, F, R>, GradientTape<E::Adjoint>)
+    where
+        E: Differentiable<F, B, R>,
+    {
+        let (res, adjoint) = self.expr.forward(backend);
+
+        (res, GradientTape::new(adjoint))
     }
 }
 
