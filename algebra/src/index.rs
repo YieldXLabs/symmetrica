@@ -11,7 +11,6 @@ pub trait Label: 'static + Copy + Clone + Debug + Send + Sync {
     fn name() -> &'static str;
 }
 
-// TODO: DynShape struct that implements your Shape trait but holds Vec<usize> at runtime.
 pub trait Shape {
     const RANK: usize;
     type Axes;
@@ -22,20 +21,19 @@ impl Shape for Nil {
     const RANK: usize = 0;
     type Axes = Nil;
 }
-
-// 2. Recursive Case: Cons (Rank 1 + Tail)
-// We capture the Head label and the Tail shape
+// 2. Recursive Case: Cons<H, T> (Rank 1 + T::RANK)
 impl<H: Label, T: Shape> Shape for Cons<H, T> {
     const RANK: usize = 1 + T::RANK;
     type Axes = Cons<H, T>;
 }
 
+// Dynamic Rank Shape
 #[derive(Debug, Clone, Copy)]
 pub struct DynRank<const N: usize>;
 
 impl<const N: usize> Shape for DynRank<N> {
     const RANK: usize = N;
-    type Axes = ();
+    type Axes = Nil;
 }
 
 // pub struct True;
@@ -79,7 +77,6 @@ impl<const N: usize> Shape for DynRank<N> {
 // {
 //     const INDEX: usize = <Cons<Head, Tail> as IndexOfFinder<Target, <Head as TypeEq<Target>>::Result>>::VALUE;
 // }
-
 
 // We can implement a conversion to panic if users try to use symbolic ops on DynRank
 // impl<const N: usize> IndexOf<Batch> for DynRank<N> {
