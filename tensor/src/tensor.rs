@@ -77,15 +77,21 @@ pub struct Tensor<F: Real, Sh: Shape, const R: usize, E = Dense<F, R>> {
     pub _marker: PhantomData<(F, Sh)>,
 }
 
+impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
+    pub(crate) fn wrap(expr: E) -> Self {
+        Self {
+            expr,
+            _marker: PhantomData,
+        }
+    }
+}
+
 impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, Dense<F, R>> {
     pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Self {
         debug_assert_eq!(R, Sh::RANK);
         debug_assert_eq!(data.len(), shape.iter().product::<usize>());
 
-        Tensor {
-            expr: Dense::new(Arc::new(data), shape),
-            _marker: PhantomData,
-        }
+        Tensor::wrap(Dense::new(Arc::new(data), shape))
     }
 
     pub fn from_slice(data: &[F], shape: [usize; R]) -> Self {
@@ -96,10 +102,7 @@ impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, Dense<F, R>> {
     where
         L: Lift<F>,
     {
-        Tensor {
-            expr: input.lift(),
-            _marker: PhantomData,
-        }
+        Tensor::wrap(input.lift())
     }
 }
 
