@@ -1,6 +1,9 @@
 use super::{Lift, Tensor};
-use algebra::{AddExpr, ConstExpr, Real, Shape};
-use std::{marker::PhantomData, ops::Add};
+use algebra::{AddExpr, ConstExpr, Real, Shape, SubExpr};
+use std::{
+    marker::PhantomData,
+    ops::{Add, Sub},
+};
 
 impl<F, Sh, const R: usize, L, Rhs> Add<Rhs> for Tensor<F, Sh, R, L>
 where
@@ -31,6 +34,43 @@ where
     fn add(self, rhs: Tensor<F, Sh, R, RhsExpr>) -> Self::Output {
         Tensor {
             expr: AddExpr {
+                left: self,
+                right: rhs.expr,
+            },
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<F, Sh, const R: usize, L, Rhs> Sub<Rhs> for Tensor<F, Sh, R, L>
+where
+    F: Real,
+    Sh: Shape,
+    Rhs: Lift<F>,
+{
+    type Output = Tensor<F, Sh, R, SubExpr<L, Rhs::Output>>;
+
+    fn sub(self, rhs: Rhs) -> Self::Output {
+        Tensor {
+            expr: SubExpr {
+                left: self.expr,
+                right: rhs.lift(),
+            },
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<F, Sh, const R: usize, RhsExpr> Sub<Tensor<F, Sh, R, RhsExpr>> for ConstExpr<F>
+where
+    F: Real,
+    Sh: Shape,
+{
+    type Output = Tensor<F, Sh, R, SubExpr<Self, RhsExpr>>;
+
+    fn sub(self, rhs: Tensor<F, Sh, R, RhsExpr>) -> Self::Output {
+        Tensor {
+            expr: SubExpr {
                 left: self,
                 right: rhs.expr,
             },
