@@ -1,5 +1,5 @@
 use super::{Base, Evaluator};
-use algebra::{AddExpr, Real};
+use algebra::{AddExpr, Real, ScaleExpr};
 use backend::{AddKernel, Backend};
 
 impl<F, B, L, Rhs, const R: usize> Evaluator<F, B, R> for AddExpr<L, Rhs>
@@ -16,5 +16,20 @@ where
         let storage = backend.binary::<AddKernel>(&l.storage, &r.storage);
 
         Base::new(storage, l.shape)
+    }
+}
+
+impl<F, B, Op, const R: usize> Evaluator<F, B, R> for ScaleExpr<Op, F>
+where
+    F: Real,
+    B: Backend<F>,
+    Op: Evaluator<F, B, R>,
+{
+    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R> {
+        let view = self.op.eval(backend);
+
+        let storage = backend.scale(&view.storage, self.factor);
+
+        Base::from_parts(storage, view.shape, view.strides, view.offset)
     }
 }
