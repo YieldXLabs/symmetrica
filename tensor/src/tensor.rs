@@ -117,7 +117,7 @@ impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, Dense<F, R>> {
 }
 
 impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
-    pub fn align_to<NewShape>(self) -> Tensor<F, NewShape, R, TransposeExpr<E, R>>
+    pub fn align<NewShape>(self) -> Tensor<F, NewShape, R, TransposeExpr<E, R>>
     where
         NewShape: Shape,
         Sh: Permutation<NewShape>,
