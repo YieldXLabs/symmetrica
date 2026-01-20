@@ -256,6 +256,105 @@ where
     }
 }
 
+pub trait SubsetOf<Super: Shape> {
+    type Result: Bool;
+}
+
+impl<Super: Shape> SubsetOf<Super> for Nil {
+    type Result = True;
+}
+
+impl<H, T, Super> SubsetOf<Super> for Cons<H, T>
+where
+    Super: Shape + Contains<H>,
+    T: SubsetOf<Super>,
+    <Super as Contains<H>>::Result: And<<T as SubsetOf<Super>>::Result>,
+{
+    type Result = <<Super as Contains<H>>::Result as And<<T as SubsetOf<Super>>::Result>>::Result;
+}
+
+pub trait BroadcastShape<Other: Shape> {
+    type Output: Shape;
+}
+
+impl<A, B: Shape> BroadcastShape<B> for A
+where
+    A: Union<B>,
+{
+    type Output = <A as Union<B>>::Output;
+}
+
+// Maps indices from Src to Dst
+pub trait BroadcastMap<Dst: Shape> {
+    fn mapping() -> Vec<Option<usize>>;
+}
+
+impl<Src: Shape> BroadcastMap<Nil> for Src {
+    fn mapping() -> Vec<Option<usize>> {
+        Vec::new()
+    }
+}
+
+impl<Src, Head: Label, Tail: Shape> BroadcastMap<Cons<Head, Tail>> for Src
+where
+    Src: Shape + Contains<Head>,
+    Src: BroadcastMap<Tail>,
+    Cons<Head, Tail>: BroadcastEntryFinder<Src, <Src as Contains<Head>>::Result>,
+{
+    fn mapping() -> Vec<Option<usize>> {
+        <Cons<Head, Tail> as BroadcastEntryFinder<Src, <Src as Contains<Head>>::Result>>::entry()
+    }
+}
+
+pub trait BroadcastEntryFinder<Src, ContainsResult> {
+    fn entry() -> Vec<Option<usize>>;
+}
+
+impl<Src, Head, Tail: Shape> BroadcastEntryFinder<Src, True> for Cons<Head, Tail>
+where
+    Src: Shape + IndexOf<Head>,
+    Src: BroadcastMap<Tail>,
+    Head: Label,
+{
+    fn entry() -> Vec<Option<usize>> {
+        let index = <Src as IndexOf<Head>>::INDEX;
+        let mut rest = <Src as BroadcastMap<Tail>>::mapping();
+        rest.insert(0, Some(index));
+        rest
+    }
+}
+
+impl<Src: Shape, Head, Tail: Shape> BroadcastEntryFinder<Src, False> for Cons<Head, Tail>
+where
+    Src: BroadcastMap<Tail>,
+    Head: Label,
+{
+    fn entry() -> Vec<Option<usize>> {
+        let mut rest = <Src as BroadcastMap<Tail>>::mapping();
+        rest.insert(0, None);
+        rest
+    }
+}
+
+pub trait CanBroadcastWith<Other: Shape> {
+    type Result: Bool;
+}
+
+impl<A, B> CanBroadcastWith<B> for A
+where
+    A: Shape,
+    B: Shape,
+    A: Union<B>,
+    A: SubsetOf<<A as Union<B>>::Output>,
+    B: SubsetOf<<A as Union<B>>::Output>,
+    <A as SubsetOf<<A as Union<B>>::Output>>::Result:
+        And<<B as SubsetOf<<A as Union<B>>::Output>>::Result>,
+{
+    type Result = <<A as SubsetOf<<A as Union<B>>::Output>>::Result as And<
+        <B as SubsetOf<<A as Union<B>>::Output>>::Result,
+    >>::Result;
+}
+
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __generate_inequality {
