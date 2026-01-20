@@ -1,5 +1,5 @@
 use super::{Base, Evaluator};
-use algebra::{AddExpr, Real, ScaleExpr, SubExpr, TransposeExpr};
+use algebra::{AddExpr, Real, ReshapeExpr, ScaleExpr, SubExpr, TransposeExpr};
 use backend::{AddKernel, Backend, SubKernel};
 
 impl<F, B, L, Rhs, const R: usize> Evaluator<F, B, R> for AddExpr<L, Rhs>
@@ -70,5 +70,21 @@ where
         }
 
         Base::from_parts(view.storage, new_shape, new_strides, view.offset)
+    }
+}
+
+impl<F, B, E, const R_IN: usize, const R_OUT: usize> Evaluator<F, B, R_OUT>
+    for ReshapeExpr<E, R_IN, R_OUT>
+where
+    F: Real,
+    B: Backend<F>,
+    E: Evaluator<F, B, R_IN>,
+{
+    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R_OUT> {
+        let view = self.op.eval(backend);
+
+        let new_strides = Base::<B::Repr, F, R_OUT>::compute_strides(&self.new_shape);
+
+        Base::from_parts(view.storage, self.new_shape, new_strides, 0)
     }
 }

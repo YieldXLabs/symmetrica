@@ -1,6 +1,7 @@
 use super::{Differentiable, Evaluator, GradientTape, LeafAdjoint, Lift};
 use algebra::{
-    BroadcastExpr, BroadcastMap, DynRank, Permutation, Real, ScaleExpr, Shape, TransposeExpr,
+    BroadcastExpr, BroadcastMap, DynRank, Permutation, Real, ReshapeExpr, ScaleExpr, Shape,
+    TransposeExpr,
 };
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
@@ -39,7 +40,7 @@ impl<S, F, const R: usize> Base<S, F, R> {
         }
     }
 
-    fn compute_strides(shape: &[usize; R]) -> [usize; R] {
+    pub fn compute_strides(shape: &[usize; R]) -> [usize; R] {
         let mut strides = [0; R];
         let mut product = 1;
 
@@ -153,6 +154,16 @@ impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
             op: self.expr,
             target_shape: target_sizes,
             mapping: array_map,
+        })
+    }
+
+    pub fn reshape<const NEW_R: usize>(
+        self,
+        new_shape: [usize; NEW_R],
+    ) -> Tensor<F, DynRank<NEW_R>, NEW_R, ReshapeExpr<E, R, NEW_R>> {
+        Tensor::wrap(ReshapeExpr {
+            op: self.expr,
+            new_shape,
         })
     }
 }
