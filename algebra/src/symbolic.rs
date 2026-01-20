@@ -230,6 +230,31 @@ where
     type Output = <<T as Union<Rhs>>::Output as AddUnique<H>>::Output;
 }
 
+pub trait Permutation<Dst: Shape> {
+    fn indices() -> Vec<usize>;
+}
+
+impl<Src: Shape> Permutation<Nil> for Src {
+    fn indices() -> Vec<usize> {
+        Vec::new()
+    }
+}
+
+impl<Src, Head, Tail> Permutation<Cons<Head, Tail>> for Src
+where
+    Src: Shape + IndexOf<Head>,
+    Head: Label,
+    Tail: Shape,
+    Src: Permutation<Tail>,
+{
+    fn indices() -> Vec<usize> {
+        let current = <Src as IndexOf<Head>>::INDEX;
+        let mut rest = <Src as Permutation<Tail>>::indices();
+        rest.insert(0, current);
+        rest
+    }
+}
+
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __generate_inequality {
