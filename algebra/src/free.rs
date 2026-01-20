@@ -144,6 +144,7 @@ pub struct EqExpr<L, R> {
 pub struct BroadcastExpr<Op, const R_IN: usize, const R_OUT: usize> {
     pub op: Op,
     pub target_shape: [usize; R_OUT],
+    pub mapping: [Option<usize>; R_OUT],
 }
 
 #[derive(Debug, Clone, Copy)]
