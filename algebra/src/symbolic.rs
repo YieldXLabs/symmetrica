@@ -240,6 +240,7 @@ impl<Src: Shape> Permutation<Nil> for Src {
     }
 }
 
+// TODO: Make it faster
 impl<Src, Head, Tail> Permutation<Cons<Head, Tail>> for Src
 where
     Src: Shape + IndexOf<Head>,
@@ -250,7 +251,7 @@ where
     fn indices() -> Vec<usize> {
         let current = <Src as IndexOf<Head>>::INDEX;
         let mut rest = <Src as Permutation<Tail>>::indices();
-        rest.insert(0, current);
+        rest.insert(0, current); // O(N) 
         rest
     }
 }
