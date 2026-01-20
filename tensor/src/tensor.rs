@@ -1,5 +1,5 @@
 use super::{Differentiable, Evaluator, GradientTape, LeafAdjoint, Lift};
-use algebra::{DynRank, Real, ScaleExpr, Shape};
+use algebra::{DynRank, Permutation, Real, ScaleExpr, Shape, TransposeExpr};
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
 
@@ -113,6 +113,25 @@ impl<F: Real, Sh: Shape, const R: usize> Tensor<F, Sh, R, Dense<F, R>> {
         L: Lift<F>,
     {
         Tensor::wrap(input.lift())
+    }
+}
+
+impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
+    pub fn align_to<NewShape>(self) -> Tensor<F, NewShape, R, TransposeExpr<E, R>>
+    where
+        NewShape: Shape,
+        Sh: Permutation<NewShape>,
+    {
+        let vec_indx = <Sh as Permutation<NewShape>>::indices();
+
+        debug_assert_eq!(vec_indx.len(), R, "Permutation Rank Mismatch");
+
+        let array_indx: [usize; R] = vec_indx.try_into().expect("Rank mismatch");
+
+        Tensor::wrap(TransposeExpr {
+            op: self.expr,
+            perm: array_indx,
+        })
     }
 }
 

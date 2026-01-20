@@ -1,5 +1,5 @@
 use super::{Base, Evaluator};
-use algebra::{AddExpr, Real, ScaleExpr, SubExpr};
+use algebra::{AddExpr, Real, ScaleExpr, SubExpr, TransposeExpr};
 use backend::{AddKernel, Backend, SubKernel};
 
 impl<F, B, L, Rhs, const R: usize> Evaluator<F, B, R> for AddExpr<L, Rhs>
@@ -48,5 +48,27 @@ where
         let storage = backend.scale(&view.storage, self.factor);
 
         Base::from_parts(storage, view.shape, view.strides, view.offset)
+    }
+}
+
+impl<F, B, E, const R: usize> Evaluator<F, B, R> for TransposeExpr<E, R>
+where
+    F: Real,
+    B: Backend<F>,
+    E: Evaluator<F, B, R>,
+{
+    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R> {
+        let view = self.op.eval(backend);
+
+        let mut new_shape = [0; R];
+        let mut new_strides = [0; R];
+
+        for i in 0..R {
+            let src_idx = self.perm[i];
+            new_shape[i] = view.shape[src_idx];
+            new_strides[i] = view.strides[src_idx];
+        }
+
+        Base::from_parts(view.storage, new_shape, new_strides, view.offset)
     }
 }
