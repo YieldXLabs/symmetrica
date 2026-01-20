@@ -89,16 +89,6 @@ impl<Rhs: Bool> And<Rhs> for False {
     type Result = False;
 }
 
-pub struct IfThenElse<Cond: Bool, Then, Else>(PhantomData<(Cond, Then, Else)>);
-
-impl<Cond: Bool, Then: Bool, Else: Bool> Bool for IfThenElse<Cond, Then, Else> {
-    const VALUE: bool = if Cond::VALUE {
-        Then::VALUE
-    } else {
-        Else::VALUE
-    };
-}
-
 pub trait TypeEq<Other> {
     type Result;
 }
