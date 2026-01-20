@@ -360,6 +360,114 @@ where
     >>::Result;
 }
 
+
+// TODO: einsum
+/// Defines how to contract L and R along Axis
+// pub trait Contract<L: Shape, R: Shape, Axis: Label> {
+//     /// Resulting shape after contraction
+//     type Output: Shape;
+
+//     /// (axis index in L, axis index in R)
+//     const AXES: (usize, usize);
+// }
+
+// pub struct DefaultContract;
+
+// impl<L, R, Axis> Contract<L, R, Axis> for DefaultContract
+// where
+//     L: Shape + IndexOf<Axis> + Remove<Axis>,
+//     R: Shape + IndexOf<Axis> + Remove<Axis>,
+//     Axis: Label,
+//     <L as Remove<Axis>>::Remainder: Union<
+//         <R as Remove<Axis>>::Remainder
+//     >,
+// {
+//     type Output =
+//         <<L as Remove<Axis>>::Remainder as Union<
+//             <R as Remove<Axis>>::Remainder
+//         >>::Output;
+
+//     const AXES: (usize, usize) = (
+//         <L as IndexOf<Axis>>::INDEX,
+//         <R as IndexOf<Axis>>::INDEX,
+//     );
+// }
+
+// pub trait SharedAxes<Rhs: Shape> {
+//     type Axes: Shape;
+// }
+
+// impl<Rhs: Shape> SharedAxes<Rhs> for Nil {
+//     type Axes = Nil;
+// }
+
+// impl<H, T, Rhs> SharedAxes<Rhs> for Cons<H, T>
+// where
+//     H: Label,
+//     Rhs: Contains<H>,
+//     T: SharedAxes<Rhs>,
+//     <Rhs as Contains<H>>::Result: Bool,
+// {
+//     type Axes = IfThenElse<
+//         <Rhs as Contains<H>>::Result,
+//         Cons<H, <T as SharedAxes<Rhs>>::Axes>,
+//         <T as SharedAxes<Rhs>>::Axes,
+//     >;
+// }
+
+
+// pub trait MultiContract<L: Shape, R: Shape, Axes: Shape> {
+//     type Output: Shape;
+// }
+
+// impl<L: Shape, R: Shape> MultiContract<L, R, Nil> for () {
+//     type Output = <L as Union<R>>::Output;
+// }
+
+// impl<L, R, H, T> MultiContract<L, R, Cons<H, T>> for ()
+// where
+//     (): Contract<L, R, H>,
+//     (): MultiContract<
+//         <() as Contract<L, R, H>>::Output,
+//         Nil,
+//         T
+//     >,
+// {
+//     type Output =
+//         <() as MultiContract<
+//             <() as Contract<L, R, H>>::Output,
+//             Nil,
+//             T
+//         >>::Output;
+// }
+
+
+// #[macro_export]
+// macro_rules! einsum {
+//     (
+//         ($($a_axes:ty),+),
+//         ($($b_axes:ty),+)
+//         ->
+//         ($($out_axes:ty),+);
+//         $a:expr, $b:expr
+//     ) => {{
+//         type ASh = Axes![$($a_axes),+];
+//         type BSh = Axes![$($b_axes),+];
+//         type OutSh = Axes![$($out_axes),+];
+
+//         let a1 = $a.align_to::<ASh>();
+//         let b1 = $b.align_to::<BSh>();
+
+//         // Infer shared axes at type level
+//         type Shared = <ASh as SharedAxes<BSh>>::Axes;
+
+//         let tmp = a1.contract_all::<Shared>(b1);
+
+//         tmp.align_to::<OutSh>()
+//     }};
+// }
+
+
 // TODO: Masked - like causal mask
 // The Type Wrapper: "This axis has a validity mask attached"
 // #[derive(Debug, Clone, Copy)]
