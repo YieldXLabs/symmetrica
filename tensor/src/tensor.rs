@@ -1,5 +1,5 @@
 use super::{Differentiable, Evaluator, GradientTape, LeafAdjoint, Lift};
-use algebra::{BroadcastExpr, DynRank, Real, ScaleExpr, Shape};
+use algebra::{DynRank, Real, ScaleExpr, Shape};
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
 
@@ -160,10 +160,6 @@ macro_rules! __count {
     ($head:expr $(, $tail:expr)*) => (1usize + $crate::__count!($($tail),*));
 }
 
-// TODO: Improve float conversion here.
-// Just push the value. Rust inference will handle the conversion
-// if F implements From<f64> or similar.
-// Or use: $vec.push($crate::algebra::Real::from_f64($x as f64).unwrap());
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __flatten_1d {
