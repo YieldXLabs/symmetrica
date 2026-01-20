@@ -1,5 +1,7 @@
 use super::{Differentiable, Evaluator, GradientTape, LeafAdjoint, Lift};
-use algebra::{DynRank, Permutation, Real, ScaleExpr, Shape, TransposeExpr};
+use algebra::{
+    BroadcastExpr, BroadcastMap, DynRank, Permutation, Real, ScaleExpr, Shape, TransposeExpr,
+};
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
 
@@ -131,6 +133,26 @@ impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
         Tensor::wrap(TransposeExpr {
             op: self.expr,
             perm: array_idx,
+        })
+    }
+
+    pub fn expand<Target, const R_OUT: usize>(
+        self,
+        target_sizes: [usize; R_OUT],
+    ) -> Tensor<F, Target, R_OUT, BroadcastExpr<E, R, R_OUT>>
+    where
+        Target: Shape + BroadcastMap<Sh>,
+    {
+        debug_assert_eq!(Target::RANK, R_OUT, "Target shape rank mismatch");
+
+        let vec_map = <Target as BroadcastMap<Sh>>::mapping();
+        let array_map: [Option<usize>; R_OUT] =
+            vec_map.try_into().ok().expect("Mapping length mismatch");
+
+        Tensor::wrap(BroadcastExpr {
+            op: self.expr,
+            target_shape: target_sizes,
+            mapping: array_map,
         })
     }
 }
