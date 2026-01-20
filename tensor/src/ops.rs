@@ -1,19 +1,24 @@
 use super::{Lift, Tensor};
-use algebra::{AddExpr, ConstExpr, Real, Shape, SubExpr};
+use algebra::{
+    AddExpr, BroadcastShape, CanBroadcastWith, ConstExpr, Real, Shape, SubExpr, True, TypeEq,
+};
 use std::ops::{Add, Sub};
 
-impl<F, Sh, const R: usize, L, Rhs> Add<Rhs> for Tensor<F, Sh, R, L>
+impl<F, ShL, ShR, const R: usize, EL, ER> Add<Tensor<F, ShR, R, ER>> for Tensor<F, ShL, R, EL>
 where
     F: Real,
-    Sh: Shape,
-    Rhs: Lift<F>,
+    ShL: Shape,
+    ShR: Shape,
+    ShL: CanBroadcastWith<ShR>,
+    <ShL as CanBroadcastWith<ShR>>::Result: TypeEq<True>,
+    ShL: BroadcastShape<ShR>,
 {
-    type Output = Tensor<F, Sh, R, AddExpr<L, Rhs::Output>>;
+    type Output = Tensor<F, <ShL as BroadcastShape<ShR>>::Output, R, AddExpr<EL, ER>>;
 
-    fn add(self, rhs: Rhs) -> Self::Output {
+    fn add(self, rhs: Tensor<F, ShR, R, ER>) -> Self::Output {
         Tensor::wrap(AddExpr {
             left: self.expr,
-            right: rhs.lift(),
+            right: rhs.expr,
         })
     }
 }

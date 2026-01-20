@@ -1,5 +1,6 @@
 use core::fmt::Debug;
 use core::marker::PhantomData;
+use std::usize;
 
 // Core Types
 #[derive(Debug, Clone, Copy)]
@@ -220,6 +221,10 @@ where
     type Output = <<T as Union<Rhs>>::Output as AddUnique<H>>::Output;
 }
 
+impl<const N: usize> Union<DynRank<N>> for DynRank<N> {
+    type Output = DynRank<N>;
+}
+
 pub trait Permutation<Dst: Shape> {
     fn indices() -> Vec<usize>;
 }
@@ -263,6 +268,10 @@ where
     type Result = <<Super as Contains<H>>::Result as And<<T as SubsetOf<Super>>::Result>>::Result;
 }
 
+impl<const N: usize> SubsetOf<DynRank<N>> for DynRank<N> {
+    type Result = True;
+}
+
 pub trait BroadcastShape<Other: Shape> {
     type Output: Shape;
 }
@@ -293,6 +302,12 @@ where
 {
     fn mapping() -> Vec<Option<usize>> {
         <Cons<Head, Tail> as BroadcastEntryFinder<Src, <Src as Contains<Head>>::Result>>::entry()
+    }
+}
+
+impl<const N: usize> BroadcastMap<DynRank<N>> for DynRank<N> {
+    fn mapping() -> Vec<Option<usize>> {
+        (0..N).map(|i| Some(i)).collect()
     }
 }
 
