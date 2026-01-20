@@ -122,15 +122,15 @@ impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
         NewShape: Shape,
         Sh: Permutation<NewShape>,
     {
-        let vec_indx = <Sh as Permutation<NewShape>>::indices();
+        let vec_idx = <Sh as Permutation<NewShape>>::indices();
 
-        debug_assert_eq!(vec_indx.len(), R, "Permutation Rank Mismatch");
+        debug_assert_eq!(vec_idx.len(), R, "Permutation Rank Mismatch");
 
-        let array_indx: [usize; R] = vec_indx.try_into().expect("Rank mismatch");
+        let array_idx: [usize; R] = vec_idx.try_into().expect("Rank mismatch");
 
         Tensor::wrap(TransposeExpr {
             op: self.expr,
-            perm: array_indx,
+            perm: array_idx,
         })
     }
 }
