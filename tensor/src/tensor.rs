@@ -122,6 +122,13 @@ impl<F: Real, Sh: Shape, E> Tensor<F, Sh, E>
 where
     [(); Sh::RANK]: Sized,
 {
+    pub fn scale(self, factor: F) -> Tensor<F, Sh, ScaleExpr<E, F>> {
+        Tensor::wrap(ScaleExpr {
+            op: self.expr,
+            factor,
+        })
+    }
+
     pub fn align<NewShape>(self) -> Tensor<F, NewShape, TransposeExpr<E, { Sh::RANK }>>
     where
         NewShape: Shape,
@@ -166,13 +173,6 @@ where
 }
 
 impl<F: Real, Sh: Shape, E> Tensor<F, Sh, E> {
-    pub fn scale(self, factor: F) -> Tensor<F, Sh, ScaleExpr<E, F>> {
-        Tensor::wrap(ScaleExpr {
-            op: self.expr,
-            factor,
-        })
-    }
-
     pub fn collect<B: Backend<F>>(&self, backend: &mut B) -> Base<B::Repr, F, { Sh::RANK }>
     where
         E: Evaluator<F, B, { Sh::RANK }>,
