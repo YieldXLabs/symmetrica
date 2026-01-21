@@ -166,6 +166,14 @@ pub struct SelectExpr<Op> {
     pub index: usize,
 }
 
+#[derive(Debug, Clone)]
+pub struct CoendExpr<L, R> {
+    pub left: L,
+    pub right: R,
+    pub axis_l: usize,
+    pub axis_r: usize,
+}
+
 // TODO: Distance metrics
 // pub trait DistanceMetric<F: Real>: Copy + Clone + 'static {}
 
