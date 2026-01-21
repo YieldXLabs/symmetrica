@@ -1,8 +1,6 @@
-use super::{Lift, Tensor};
-use algebra::{
-    AddExpr, BroadcastShape, CanBroadcastWith, ConstExpr, Real, Shape, SubExpr, True, TypeEq,
-};
-use std::ops::{Add, Sub};
+use super::Tensor;
+use algebra::{AddExpr, BroadcastShape, CanBroadcastWith, ConstExpr, Real, Shape, True, TypeEq};
+use std::ops::Add;
 
 // TODO: Auto broadcast
 // fn infer_union_shape<const RL: usize, const RR: usize, const ROUT: usize>(
@@ -64,37 +62,6 @@ where
 
     fn add(self, rhs: Tensor<F, Sh, R, RhsExpr>) -> Self::Output {
         Tensor::wrap(AddExpr {
-            left: self,
-            right: rhs.expr,
-        })
-    }
-}
-
-impl<F, Sh, const R: usize, L, Rhs> Sub<Rhs> for Tensor<F, Sh, R, L>
-where
-    F: Real,
-    Sh: Shape,
-    Rhs: Lift<F>,
-{
-    type Output = Tensor<F, Sh, R, SubExpr<L, Rhs::Output>>;
-
-    fn sub(self, rhs: Rhs) -> Self::Output {
-        Tensor::wrap(SubExpr {
-            left: self.expr,
-            right: rhs.lift(),
-        })
-    }
-}
-
-impl<F, Sh, const R: usize, RhsExpr> Sub<Tensor<F, Sh, R, RhsExpr>> for ConstExpr<F>
-where
-    F: Real,
-    Sh: Shape,
-{
-    type Output = Tensor<F, Sh, R, SubExpr<Self, RhsExpr>>;
-
-    fn sub(self, rhs: Tensor<F, Sh, R, RhsExpr>) -> Self::Output {
-        Tensor::wrap(SubExpr {
             left: self,
             right: rhs.expr,
         })
