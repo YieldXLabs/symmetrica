@@ -27,7 +27,7 @@ use std::ops::Add;
 //     out
 // }
 
-impl<F, ShL, ShR, const R: usize, EL, ER> Add<Tensor<F, ShR, R, ER>> for Tensor<F, ShL, R, EL>
+impl<F, ShL, ShR, EL, ER> Add<Tensor<F, ShR, ER>> for Tensor<F, ShL, EL>
 where
     F: Real,
     ShL: Shape,
@@ -38,14 +38,9 @@ where
     <ShL as BroadcastShape<ShR>>::Output: Shape,
     [(); <ShL as BroadcastShape<ShR>>::Output::RANK]: Sized,
 {
-    type Output = Tensor<
-        F,
-        <ShL as BroadcastShape<ShR>>::Output,
-        { <ShL as BroadcastShape<ShR>>::Output::RANK },
-        AddExpr<EL, ER>,
-    >;
+    type Output = Tensor<F, <ShL as BroadcastShape<ShR>>::Output, AddExpr<EL, ER>>;
 
-    fn add(self, rhs: Tensor<F, ShR, R, ER>) -> Self::Output {
+    fn add(self, rhs: Tensor<F, ShR, ER>) -> Self::Output {
         Tensor::wrap(AddExpr {
             left: self.expr,
             right: rhs.expr,
@@ -53,14 +48,14 @@ where
     }
 }
 
-impl<F, Sh, const R: usize, RhsExpr> Add<Tensor<F, Sh, R, RhsExpr>> for ConstExpr<F>
+impl<F, Sh, RhsExpr> Add<Tensor<F, Sh, RhsExpr>> for ConstExpr<F>
 where
     F: Real,
     Sh: Shape,
 {
-    type Output = Tensor<F, Sh, R, AddExpr<Self, RhsExpr>>;
+    type Output = Tensor<F, Sh, AddExpr<Self, RhsExpr>>;
 
-    fn add(self, rhs: Tensor<F, Sh, R, RhsExpr>) -> Self::Output {
+    fn add(self, rhs: Tensor<F, Sh, RhsExpr>) -> Self::Output {
         Tensor::wrap(AddExpr {
             left: self,
             right: rhs.expr,
