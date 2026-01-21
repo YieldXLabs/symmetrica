@@ -1,3 +1,4 @@
+#![feature(generic_const_exprs)]
 pub mod traits;
 pub use traits::*;
 pub mod tensor;

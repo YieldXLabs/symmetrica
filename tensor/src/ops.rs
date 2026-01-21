@@ -11,11 +11,11 @@ use std::ops::{Add, Sub};
 //     map_l: &[Option<usize>],
 // ) -> [usize; ROUT] {
 //     let mut out = [0; ROUT];
-    
+
 //     for i in 0..ROUT {
 //         let dim_l = map_l[i].map(|idx| shape_l[idx]).unwrap_or(1);
 //         let dim_r = map_r[i].map(|idx| shape_r[idx]).unwrap_or(1);
-        
+
 //         if dim_l == dim_r {
 //             out[i] = dim_l;
 //         } else if dim_l == 1 {

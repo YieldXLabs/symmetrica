@@ -360,7 +360,6 @@ where
     >>::Result;
 }
 
-
 // TODO: einsum
 /// Defines how to contract L and R along Axis
 // pub trait Contract<L: Shape, R: Shape, Axis: Label> {
@@ -415,7 +414,6 @@ where
 //     >;
 // }
 
-
 // pub trait MultiContract<L: Shape, R: Shape, Axes: Shape> {
 //     type Output: Shape;
 // }
@@ -441,7 +439,6 @@ where
 //         >>::Output;
 // }
 
-
 // #[macro_export]
 // macro_rules! einsum {
 //     (
@@ -466,7 +463,6 @@ where
 //         tmp.align_to::<OutSh>()
 //     }};
 // }
-
 
 // TODO: Masked - like causal mask
 // The Type Wrapper: "This axis has a validity mask attached"

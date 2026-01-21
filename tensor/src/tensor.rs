@@ -137,17 +137,15 @@ impl<F: Real, Sh: Shape, const R: usize, E> Tensor<F, Sh, R, E> {
         })
     }
 
-    pub fn expand<Target, const R_OUT: usize>(
+    pub fn expand<Target>(
         self,
-        target_sizes: [usize; R_OUT],
-    ) -> Tensor<F, Target, R_OUT, BroadcastExpr<E, R, R_OUT>>
+        target_sizes: [usize; Target::RANK],
+    ) -> Tensor<F, Target, { Target::RANK }, BroadcastExpr<E, R, { Target::RANK }>>
     where
         Target: Shape + BroadcastMap<Sh>,
     {
-        debug_assert_eq!(Target::RANK, R_OUT, "Target shape rank mismatch");
-
         let vec_map = <Target as BroadcastMap<Sh>>::mapping();
-        let array_map: [Option<usize>; R_OUT] =
+        let array_map: [Option<usize>; Target::RANK] =
             vec_map.try_into().ok().expect("Mapping length mismatch");
 
         Tensor::wrap(BroadcastExpr {
