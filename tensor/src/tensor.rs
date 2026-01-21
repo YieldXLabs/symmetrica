@@ -105,7 +105,6 @@ impl<F: Real, const R: usize> Tensor<F, DynRank<R>, Dense<F, R>> {
             R,
             "Rank mismatch between DynRank and semantic axes"
         );
-
         Tensor::wrap(self.expr)
     }
 }
@@ -129,7 +128,6 @@ where
         Sh: Permutation<NewShape>,
     {
         let vec_idx = <Sh as Permutation<NewShape>>::indices();
-
         let array_idx: [usize; Sh::RANK] = vec_idx.try_into().expect("Rank mismatch");
 
         Tensor::wrap(TransposeExpr {
