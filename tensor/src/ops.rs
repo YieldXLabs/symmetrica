@@ -37,8 +37,15 @@ where
     ShL: CanBroadcastWith<ShR>,
     <ShL as CanBroadcastWith<ShR>>::Result: TypeEq<True>,
     ShL: BroadcastShape<ShR>,
+    <ShL as BroadcastShape<ShR>>::Output: Shape,
+    [(); <ShL as BroadcastShape<ShR>>::Output::RANK]: Sized,
 {
-    type Output = Tensor<F, <ShL as BroadcastShape<ShR>>::Output, R, AddExpr<EL, ER>>;
+    type Output = Tensor<
+        F,
+        <ShL as BroadcastShape<ShR>>::Output,
+        { <ShL as BroadcastShape<ShR>>::Output::RANK },
+        AddExpr<EL, ER>,
+    >;
 
     fn add(self, rhs: Tensor<F, ShR, R, ER>) -> Self::Output {
         Tensor::wrap(AddExpr {
