@@ -38,14 +38,6 @@ impl<const N: usize> Shape for DynRank<N> {
     type Axes = Nil;
 }
 
-pub trait RankDiff<Rhs: Shape> {
-    const VALUE: usize;
-}
-
-impl<Lhs: Shape, Rhs: Shape> RankDiff<Rhs> for Lhs {
-    const VALUE: usize = Lhs::RANK.saturating_sub(Rhs::RANK);
-}
-
 // Logic engine (internal)
 pub struct True;
 pub struct False;

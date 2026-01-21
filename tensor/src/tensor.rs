@@ -99,9 +99,9 @@ impl<F: Real, const R: usize> Tensor<F, DynRank<R>, R, Dense<F, R>> {
         Self::from_vec(data.to_vec(), shape)
     }
 
-    pub fn name_axes<Sh: Shape>(self) -> Tensor<F, Sh, R, Dense<F, R>> {
+    pub fn into_named<NewSh: Shape>(self) -> Tensor<F, NewSh, R, Dense<F, R>> {
         debug_assert_eq!(
-            Sh::RANK,
+            NewSh::RANK,
             R,
             "Rank mismatch between DynRank and semantic axes"
         );
