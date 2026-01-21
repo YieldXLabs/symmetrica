@@ -34,6 +34,23 @@ impl<F: Real> Backend<F> for GenericBackend<F> {
         storage
     }
 
+    fn to_host(&mut self, device_data: &Self::Repr) -> Vec<F> {
+        let mut host_vec = Vec::with_capacity(device_data.len());
+
+        let src_slice = device_data.as_slice();
+
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                src_slice.as_ptr(),
+                host_vec.as_mut_ptr(),
+                device_data.len(),
+            );
+            host_vec.set_len(device_data.len());
+        }
+
+        host_vec
+    }
+
     fn scale(&mut self, input: &Self::Repr, factor: F) -> Self::Repr {
         let mut output = Self::Repr::alloc(input.len());
         let input_slice = input.as_slice();
@@ -95,20 +112,23 @@ impl<F: Real> Backend<F> for GenericBackend<F> {
         output
     }
 
-    fn to_host(&mut self, device_data: &Self::Repr) -> Vec<F> {
-        let mut host_vec = Vec::with_capacity(device_data.len());
+    fn contract<const RL: usize, const RR: usize>(
+        &mut self,
+        lhs: &Self::Repr,
+        lhs_layout: crate::Layout<RL>,
+        axis_l: usize,
+        rhs: &Self::Repr,
+        rhs_layout: crate::Layout<RR>,
+        axis_r: usize,
+    ) -> Self::Repr {
+        todo!()
+    }
 
-        let src_slice = device_data.as_slice();
-
-        unsafe {
-            std::ptr::copy_nonoverlapping(
-                src_slice.as_ptr(),
-                host_vec.as_mut_ptr(),
-                device_data.len(),
-            );
-            host_vec.set_len(device_data.len());
-        }
-
-        host_vec
+    fn compact<const R: usize>(
+        &mut self,
+        src: &Self::Repr,
+        layout: crate::Layout<R>,
+    ) -> Self::Repr {
+        todo!()
     }
 }
