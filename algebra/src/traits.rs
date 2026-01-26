@@ -5,11 +5,11 @@ use core::ops::{Add, Div, Mul, Neg, Sub};
 
 // 0. Identity
 // The additive identity (0)
-pub trait Zero {
+pub trait Zero: Sized {
     fn zero() -> Self;
 }
 // The multiplicative identity (1)
-pub trait One {
+pub trait One: Sized {
     fn one() -> Self;
 }
 
