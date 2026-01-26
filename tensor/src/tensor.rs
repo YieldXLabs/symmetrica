@@ -72,7 +72,7 @@ impl<F: Real, B: Backend<F>, const R: usize> Differentiable<F, B, R> for Dense<F
     }
 }
 
-// TODO: implement toeplitz(), zeros(), ones(), full(), eye()
+// TODO: implement toeplitz(), zeros(), ones(), full(), eye(), one_hot(), random()
 // TODO: implement slice over axes
 #[derive(Debug, Clone)]
 pub struct Tensor<F: Real, Sh: Shape, E = Dense<F, { Sh::RANK }>> {
