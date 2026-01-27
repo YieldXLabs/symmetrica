@@ -3,14 +3,14 @@ use std::marker::PhantomData;
 use super::{
     Backend, BinaryKernel, ReduceKernel, Storage, StreamKernel, UnaryKernel, UnifiedStorage,
 };
-use algebra::Real;
+use algebra::{Data, Semiring};
 
 #[derive(Debug, Clone, Copy)]
-pub struct GenericBackend<F: Real> {
+pub struct GenericBackend<F: Data> {
     _marker: PhantomData<F>,
 }
 
-impl<F: Real> GenericBackend<F> {
+impl<F: Data> GenericBackend<F> {
     pub fn new() -> Self {
         Self {
             _marker: PhantomData,
@@ -18,13 +18,13 @@ impl<F: Real> GenericBackend<F> {
     }
 }
 
-impl<F: Real> Default for GenericBackend<F> {
+impl<F: Data> Default for GenericBackend<F> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<F: Real> Backend<F> for GenericBackend<F> {
+impl<F: Data> Backend<F> for GenericBackend<F> {
     type Repr = UnifiedStorage<F>;
 
     fn pure(&mut self, data: &[F]) -> Self::Repr {
@@ -51,7 +51,10 @@ impl<F: Real> Backend<F> for GenericBackend<F> {
         host_vec
     }
 
-    fn scale(&mut self, input: &Self::Repr, factor: F) -> Self::Repr {
+    fn scale(&mut self, input: &Self::Repr, factor: F) -> Self::Repr
+    where
+        F: Semiring,
+    {
         let mut output = Self::Repr::alloc(input.len());
         let input_slice = input.as_slice();
         let output_slice = output.as_mut_slice();

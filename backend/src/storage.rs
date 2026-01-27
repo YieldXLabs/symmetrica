@@ -1,18 +1,18 @@
 use super::Storage;
-use algebra::Real;
+use algebra::Data;
 use std::alloc::{Layout, alloc_zeroed, dealloc};
 use std::ptr::NonNull;
 
 #[derive(Debug)]
-pub struct UnifiedStorage<F: Real> {
+pub struct UnifiedStorage<F: Data> {
     pub ptr: NonNull<F>,
     pub len: usize,
 }
 
-unsafe impl<F: Real> Send for UnifiedStorage<F> {}
-unsafe impl<F: Real> Sync for UnifiedStorage<F> {}
+unsafe impl<F: Data> Send for UnifiedStorage<F> {}
+unsafe impl<F: Data> Sync for UnifiedStorage<F> {}
 
-impl<F: Real> Storage<F> for UnifiedStorage<F> {
+impl<F: Data> Storage<F> for UnifiedStorage<F> {
     fn len(&self) -> usize {
         self.len
     }
@@ -35,7 +35,7 @@ impl<F: Real> Storage<F> for UnifiedStorage<F> {
     }
 }
 
-impl<F: Real> Clone for UnifiedStorage<F> {
+impl<F: Data> Clone for UnifiedStorage<F> {
     fn clone(&self) -> Self {
         let new_storage = <Self as Storage<F>>::alloc(self.len);
 
@@ -47,7 +47,7 @@ impl<F: Real> Clone for UnifiedStorage<F> {
     }
 }
 
-impl<F: Real> Drop for UnifiedStorage<F> {
+impl<F: Data> Drop for UnifiedStorage<F> {
     fn drop(&mut self) {
         let layout = Layout::array::<F>(self.len).unwrap();
         unsafe {
