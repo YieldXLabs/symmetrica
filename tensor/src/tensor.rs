@@ -1,7 +1,7 @@
 use super::{Differentiable, Evaluator, GradientTape, LeafAdjoint, Lift};
 use algebra::{
-    BroadcastExpr, BroadcastMap, DynRank, Permutation, Real, ReshapeExpr, ScaleExpr, Shape,
-    TransposeExpr,
+    BroadcastExpr, BroadcastMap, Data, DynRank, Permutation, Real, ReshapeExpr, ScaleExpr,
+    Semiring, Shape, TransposeExpr,
 };
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
@@ -55,7 +55,7 @@ impl<S, F, const R: usize> Base<S, F, R> {
 
 pub type Dense<F, const R: usize> = Base<Arc<Vec<F>>, F, R>;
 
-impl<F: Real, B: Backend<F>, const R: usize> Evaluator<F, B, R> for Dense<F, R> {
+impl<F: Data, B: Backend<F>, const R: usize> Evaluator<F, B, R> for Dense<F, R> {
     fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R> {
         let storage = backend.pure(&self.storage);
 
@@ -75,58 +75,17 @@ impl<F: Real, B: Backend<F>, const R: usize> Differentiable<F, B, R> for Dense<F
 // TODO: implement toeplitz(), zeros(), ones(), full(), eye(), one_hot(), random()
 // TODO: implement slice over axes
 #[derive(Debug, Clone)]
-pub struct Tensor<F: Real, Sh: Shape, E = Dense<F, { Sh::RANK }>> {
+pub struct Tensor<F, Sh: Shape, E = Dense<F, { Sh::RANK }>> {
     pub expr: E,
     pub _marker: PhantomData<(F, Sh)>,
 }
 
-impl<F: Real, Sh: Shape, E> Tensor<F, Sh, E> {
+impl<F: Data, Sh: Shape, E> Tensor<F, Sh, E> {
     pub(crate) fn wrap(expr: E) -> Self {
         Self {
             expr,
             _marker: PhantomData,
         }
-    }
-}
-
-impl<F: Real, const R: usize> Tensor<F, DynRank<R>, Dense<F, R>> {
-    pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Self {
-        debug_assert_eq!(data.len(), shape.iter().product::<usize>());
-        Tensor::wrap(Dense::new(Arc::new(data), shape))
-    }
-
-    pub fn from_slice(data: &[F], shape: [usize; R]) -> Self {
-        Self::from_vec(data.to_vec(), shape)
-    }
-
-    pub fn into_named<NewSh: Shape>(self) -> Tensor<F, NewSh, Dense<F, R>> {
-        debug_assert_eq!(
-            NewSh::RANK,
-            R,
-            "Rank mismatch between DynRank and semantic axes"
-        );
-        Tensor::wrap(self.expr)
-    }
-}
-
-impl<F: Real, Sh: Shape> Tensor<F, Sh, Dense<F, { Sh::RANK }>> {
-    pub fn from_expr<L>(input: L) -> Tensor<F, Sh, L::Output>
-    where
-        L: Lift<F>,
-    {
-        Tensor::wrap(input.lift())
-    }
-}
-
-impl<F: Real, Sh: Shape, E> Tensor<F, Sh, E>
-where
-    [(); Sh::RANK]: Sized,
-{
-    pub fn scale(self, factor: F) -> Tensor<F, Sh, ScaleExpr<E, F>> {
-        Tensor::wrap(ScaleExpr {
-            op: self.expr,
-            factor,
-        })
     }
 
     pub fn align<NewShape>(self) -> Tensor<F, NewShape, TransposeExpr<E, { Sh::RANK }>>
@@ -170,9 +129,7 @@ where
             new_shape,
         })
     }
-}
 
-impl<F: Real, Sh: Shape, E> Tensor<F, Sh, E> {
     pub fn collect<B: Backend<F>>(&self, backend: &mut B) -> Base<B::Repr, F, { Sh::RANK }>
     where
         E: Evaluator<F, B, { Sh::RANK }>,
@@ -180,6 +137,54 @@ impl<F: Real, Sh: Shape, E> Tensor<F, Sh, E> {
         self.expr.eval(backend)
     }
 
+    pub fn to_vec<B: Backend<F>>(&self, backend: &mut B) -> Vec<F>
+    where
+        E: Evaluator<F, B, { Sh::RANK }>,
+    {
+        let view = self.expr.eval(backend);
+
+        backend.to_host(&view.storage)
+    }
+}
+
+impl<F: Data, const R: usize> Tensor<F, DynRank<R>, Dense<F, R>> {
+    pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Self {
+        debug_assert_eq!(data.len(), shape.iter().product::<usize>());
+        Tensor::wrap(Dense::new(Arc::new(data), shape))
+    }
+
+    pub fn from_slice(data: &[F], shape: [usize; R]) -> Self {
+        Self::from_vec(data.to_vec(), shape)
+    }
+
+    pub fn from_expr<L>(input: L) -> Tensor<F, DynRank<R>, L::Output>
+    where
+        L: Lift<F>,
+    {
+        Tensor::wrap(input.lift())
+    }
+
+    pub fn into_named<NewSh: Shape>(self) -> Tensor<F, NewSh, Dense<F, R>> {
+        debug_assert_eq!(NewSh::RANK, R, "Rank mismatch");
+        Tensor::wrap(self.expr)
+    }
+}
+// Algebraic Ops
+// TODO: Add .matmul() and .scan()
+impl<F: Semiring, Sh: Shape, E> Tensor<F, Sh, E>
+where
+    [(); Sh::RANK]: Sized,
+{
+    pub fn scale(self, factor: F) -> Tensor<F, Sh, ScaleExpr<E, F>> {
+        Tensor::wrap(ScaleExpr {
+            op: self.expr,
+            factor,
+        })
+    }
+}
+
+// Calculus Ops (Gradients, Physics)
+impl<F: Real, Sh: Shape, E> Tensor<F, Sh, E> {
     pub fn forward<B: Backend<F>>(
         &self,
         backend: &mut B,
@@ -190,15 +195,6 @@ impl<F: Real, Sh: Shape, E> Tensor<F, Sh, E> {
         let (res, adjoint) = self.expr.forward(backend);
 
         (res, GradientTape::new(adjoint))
-    }
-
-    pub fn to_vec<B: Backend<F>>(&self, backend: &mut B) -> Vec<F>
-    where
-        E: Evaluator<F, B, { Sh::RANK }>,
-    {
-        let view = self.expr.eval(backend);
-
-        backend.to_host(&view.storage)
     }
 }
 

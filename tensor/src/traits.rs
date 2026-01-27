@@ -1,8 +1,8 @@
 use super::Base;
-use algebra::Real;
+use algebra::{Data, Real};
 use backend::Backend;
 
-pub trait Evaluator<F: Real, B: Backend<F>, const R: usize> {
+pub trait Evaluator<F: Data, B: Backend<F>, const R: usize> {
     fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R>;
 }
 

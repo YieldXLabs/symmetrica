@@ -13,25 +13,21 @@ pub trait One: Sized {
     fn one() -> Self;
 }
 
-// 1. Additive Group (Abelian Group)
-pub trait AdditiveGroup:
-    Clone
-    + PartialEq
-    + Debug
-    + Default
-    + Zero
-    + Add<Output = Self>
-    + Sub<Output = Self>
-    + Neg<Output = Self>
-    + Sum
+// Base trait for any data stored in a Tensor
+pub trait Data: Clone + Copy + PartialEq + Debug + 'static {}
+impl<T: Clone + Copy + PartialEq + Debug + 'static> Data for T {}
+
+// 1. Semiring (Bool, Base Math, Tropical)
+pub trait Semiring:
+    Data + Zero + One + Add<Output = Self> + Mul<Output = Self> + Sum + Product
 {
 }
 
-// 2. Ring
-pub trait Ring: AdditiveGroup + One + Mul<Output = Self> + Product {}
+// 2. Ring (Integers, Physics)
+pub trait Ring: Semiring + Sub<Output = Self> + Neg<Output = Self> {}
 
-// 3. Field
-pub trait Field: Ring + Copy + Div<Output = Self> {
+// 3. Field (Linear Algebra Inverses)
+pub trait Field: Ring + Div<Output = Self> {
     fn recip(self) -> Self;
 }
 

@@ -1,36 +1,22 @@
 use super::{BinaryKernel, ReduceKernel, StreamKernel, UnaryKernel};
-use algebra::Real;
-
-pub struct SubKernel;
-impl<F: Real> BinaryKernel<F> for SubKernel {
-    fn apply(x: F, y: F) -> F {
-        x - y
-    }
-}
+use algebra::{Real, Ring, Semiring};
 
 pub struct AddKernel;
-impl<F: Real> BinaryKernel<F> for AddKernel {
+impl<F: Semiring> BinaryKernel<F> for AddKernel {
     fn apply(x: F, y: F) -> F {
         x + y
     }
 }
 
 pub struct MulKernel;
-impl<F: Real> BinaryKernel<F> for MulKernel {
+impl<F: Semiring> BinaryKernel<F> for MulKernel {
     fn apply(x: F, y: F) -> F {
         x * y
     }
 }
 
-pub struct AbsKernel;
-impl<F: Real> UnaryKernel<F> for AbsKernel {
-    fn apply(x: F) -> F {
-        x.abs()
-    }
-}
-
 pub struct SumKernel;
-impl<F: Real> ReduceKernel<F> for SumKernel {
+impl<F: Semiring> ReduceKernel<F> for SumKernel {
     fn init() -> F {
         F::zero()
     }
@@ -39,10 +25,18 @@ impl<F: Real> ReduceKernel<F> for SumKernel {
     }
 }
 
+pub struct SubKernel;
+impl<F: Ring> BinaryKernel<F> for SubKernel {
+    fn apply(x: F, y: F) -> F {
+        x - y
+    }
+}
+
 pub struct Ema<F> {
     alpha: F,
 }
-impl<F: Real> StreamKernel<F> for Ema<F> {
+
+impl<F: Ring> StreamKernel<F> for Ema<F> {
     type State = F;
 
     fn init(&self) -> F {
@@ -52,6 +46,13 @@ impl<F: Real> StreamKernel<F> for Ema<F> {
     fn step(&self, state: &mut F, x: F) -> F {
         *state = self.alpha * x + (F::one() - self.alpha) * (*state);
         *state
+    }
+}
+
+pub struct AbsKernel;
+impl<F: Real> UnaryKernel<F> for AbsKernel {
+    fn apply(x: F) -> F {
+        x.abs()
     }
 }
 

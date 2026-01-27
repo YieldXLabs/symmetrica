@@ -1,4 +1,4 @@
-use super::{AdditiveGroup, Discretization, Field, One, OrderedField, Real, Ring, Zero};
+use super::{Discretization, Field, One, OrderedField, Real, Ring, Semiring, Zero};
 use core::cmp::Ordering;
 use core::fmt::{self, Display};
 use core::hash::{Hash, Hasher};
@@ -197,9 +197,11 @@ impl One for TradingFloat {
     }
 }
 
-impl AdditiveGroup for TradingFloat {}
+// Allows MatMul and Scan
+impl Semiring for TradingFloat {}
+// Allows Subtraction and Physics
 impl Ring for TradingFloat {}
-
+// Allows division and linear algebra
 impl Field for TradingFloat {
     #[inline]
     fn recip(self) -> Self {
@@ -247,6 +249,7 @@ impl OrderedField for TradingFloat {
     }
 }
 
+// Allows Analysis and Calculus
 impl Real for TradingFloat {
     #[inline]
     fn pi() -> Self {

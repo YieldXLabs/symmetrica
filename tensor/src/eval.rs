@@ -1,10 +1,10 @@
 use super::{Base, Evaluator};
-use algebra::{AddExpr, Real, ReshapeExpr, ScaleExpr, SubExpr, TransposeExpr};
+use algebra::{AddExpr, Data, ReshapeExpr, Ring, ScaleExpr, Semiring, SubExpr, TransposeExpr};
 use backend::{AddKernel, Backend, SubKernel};
 
 impl<F, B, L, Rhs, const R: usize> Evaluator<F, B, R> for AddExpr<L, Rhs>
 where
-    F: Real,
+    F: Semiring,
     B: Backend<F>,
     L: Evaluator<F, B, R>,
     Rhs: Evaluator<F, B, R>,
@@ -19,9 +19,24 @@ where
     }
 }
 
+impl<F, B, Op, const R: usize> Evaluator<F, B, R> for ScaleExpr<Op, F>
+where
+    F: Semiring,
+    B: Backend<F>,
+    Op: Evaluator<F, B, R>,
+{
+    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R> {
+        let view = self.op.eval(backend);
+
+        let storage = backend.scale(&view.storage, self.factor);
+
+        Base::from_parts(storage, view.shape, view.strides, view.offset)
+    }
+}
+
 impl<F, B, L, Rhs, const R: usize> Evaluator<F, B, R> for SubExpr<L, Rhs>
 where
-    F: Real,
+    F: Ring,
     B: Backend<F>,
     L: Evaluator<F, B, R>,
     Rhs: Evaluator<F, B, R>,
@@ -36,24 +51,10 @@ where
     }
 }
 
-impl<F, B, Op, const R: usize> Evaluator<F, B, R> for ScaleExpr<Op, F>
-where
-    F: Real,
-    B: Backend<F>,
-    Op: Evaluator<F, B, R>,
-{
-    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R> {
-        let view = self.op.eval(backend);
-
-        let storage = backend.scale(&view.storage, self.factor);
-
-        Base::from_parts(storage, view.shape, view.strides, view.offset)
-    }
-}
-
+// Structural Ops
 impl<F, B, E, const R: usize> Evaluator<F, B, R> for TransposeExpr<E, R>
 where
-    F: Real,
+    F: Data,
     B: Backend<F>,
     E: Evaluator<F, B, R>,
 {
@@ -76,7 +77,7 @@ where
 impl<F, B, E, const R_IN: usize, const R_OUT: usize> Evaluator<F, B, R_OUT>
     for ReshapeExpr<E, R_IN, R_OUT>
 where
-    F: Real,
+    F: Data,
     B: Backend<F>,
     E: Evaluator<F, B, R_IN>,
 {

@@ -1,5 +1,5 @@
-use super::Tensor;
-use algebra::{AddExpr, BroadcastShape, CanBroadcastWith, ConstExpr, Real, Shape, True, TypeEq};
+use super::{Lift, Tensor};
+use algebra::{AddExpr, BroadcastShape, CanBroadcastWith, Semiring, Shape, True, TypeEq};
 use std::ops::Add;
 
 // TODO: Auto broadcast
@@ -29,7 +29,7 @@ use std::ops::Add;
 
 impl<F, ShL, ShR, EL, ER> Add<Tensor<F, ShR, ER>> for Tensor<F, ShL, EL>
 where
-    F: Real,
+    F: Semiring,
     ShL: Shape,
     ShR: Shape,
     ShL: CanBroadcastWith<ShR>,
@@ -48,17 +48,17 @@ where
     }
 }
 
-impl<F, Sh, RhsExpr> Add<Tensor<F, Sh, RhsExpr>> for ConstExpr<F>
+impl<F, Sh, LhsExpr> Add<F> for Tensor<F, Sh, LhsExpr>
 where
-    F: Real,
+    F: Semiring + Lift<F>,
     Sh: Shape,
 {
-    type Output = Tensor<F, Sh, AddExpr<Self, RhsExpr>>;
+    type Output = Tensor<F, Sh, AddExpr<LhsExpr, <F as Lift<F>>::Output>>;
 
-    fn add(self, rhs: Tensor<F, Sh, RhsExpr>) -> Self::Output {
+    fn add(self, rhs: F) -> Self::Output {
         Tensor::wrap(AddExpr {
-            left: self,
-            right: rhs.expr,
+            left: self.expr,
+            right: rhs.lift(),
         })
     }
 }

@@ -1,25 +1,17 @@
-use super::traits::{AdditiveGroup, Field, Real};
+use std::ops::Add;
 
-// Linear Algebra
-pub trait VectorSpace<F: Field>: AdditiveGroup {
-    fn scale(&self, scalar: F) -> Self;
-    fn dim(&self) -> usize;
+use super::traits::{Data, Real, Semiring, Zero};
+
+// Generalized Linear Algebra
+pub trait Module<S: Semiring>: Data + Add<Output = Self> + Zero {
+    fn scale(&self, scalar: S) -> Self;
 }
 
-// Geometry
-pub trait InnerProductSpace<F: Real>: VectorSpace<F> {
-    fn inner(&self, other: &Self) -> F;
+// Projection
+pub trait DotProduct<S: Semiring>: Module<S> {
+    fn dot(&self, other: &Self) -> S;
 }
 
-// Structure preserving operators
-pub trait LinearMap<F: Field, V: VectorSpace<F>, W: VectorSpace<F>> {
-    fn apply(&self, input: &V) -> W;
-}
-
-// Duality
-pub trait Adjoint<F: Real, V: InnerProductSpace<F>, W: InnerProductSpace<F>>:
-    LinearMap<F, V, W>
-{
-    type AdjointOp: LinearMap<F, W, V>;
-    fn adjoint(&self) -> Self::AdjointOp;
+pub trait Normed<S: Real>: Module<S> {
+    fn norm(&self) -> S;
 }
