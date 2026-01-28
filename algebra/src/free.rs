@@ -187,3 +187,8 @@ pub struct CoendExpr<L, R> {
 //     pub right: R,
 //     _metric: PhantomData<M>,
 // }
+
+// TODO: Match exprs
+// MatchExpr::new(|expr| matches!(expr, Add(_, Zero) => true));
+// MatchExpr::new(|expr| matches!(expr, Sub(x, x) => true));
+// MatchExpr::new(|expr| matches!(expr, Scale(Add(a,b), k) => Add(Scale(a,k), Scale(b,k))));
