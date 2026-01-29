@@ -1,7 +1,7 @@
 use super::{Differentiable, Evaluator, GradientTape, LeafAdjoint, Lift};
 use algebra::{
-    BroadcastExpr, BroadcastMap, Data, DynRank, Permutation, Real, ReshapeExpr, ScaleExpr,
-    Semiring, Shape, TransposeExpr,
+    BroadcastExpr, BroadcastMap, Data, DynRank, MapExpr, Permutation, Real, ReshapeExpr,
+    ScaleKernel, Semiring, Shape, TransposeExpr,
 };
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
@@ -175,10 +175,10 @@ impl<F: Semiring, Sh: Shape, E> Tensor<F, Sh, E>
 where
     [(); Sh::RANK]: Sized,
 {
-    pub fn scale(self, factor: F) -> Tensor<F, Sh, ScaleExpr<E, F>> {
-        Tensor::wrap(ScaleExpr {
+    pub fn scale(self, factor: F) -> Tensor<F, Sh, MapExpr<E, ScaleKernel<F>>> {
+        Tensor::wrap(MapExpr {
             op: self.expr,
-            factor,
+            kernel: ScaleKernel { factor },
         })
     }
 }

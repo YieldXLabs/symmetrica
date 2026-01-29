@@ -1,53 +1,38 @@
 use super::{Base, Evaluator};
-use algebra::{AddExpr, Data, ReshapeExpr, Ring, ScaleExpr, Semiring, SubExpr, TransposeExpr};
-use backend::{AddKernel, Backend, SubKernel};
+use algebra::{BinaryKernel, Data, MapExpr, ReshapeExpr, TransposeExpr, UnaryKernel, ZipExpr};
+use backend::Backend;
 
-impl<F, B, L, Rhs, const R: usize> Evaluator<F, B, R> for AddExpr<L, Rhs>
+impl<F, B, L, R, K, const RANK: usize> Evaluator<F, B, RANK> for ZipExpr<L, R, K>
 where
-    F: Semiring,
+    F: Data,
     B: Backend<F>,
-    L: Evaluator<F, B, R>,
-    Rhs: Evaluator<F, B, R>,
+    K: BinaryKernel<F>,
+    L: Evaluator<F, B, RANK>,
+    R: Evaluator<F, B, RANK>,
 {
-    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R> {
+    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, RANK> {
         let l = self.left.eval(backend);
         let r = self.right.eval(backend);
 
-        let storage = backend.binary::<AddKernel>(&l.storage, &r.storage);
+        let storage = backend.binary(&l.storage, &r.storage, self.kernel);
 
         Base::new(storage, l.shape)
     }
 }
 
-impl<F, B, Op, const R: usize> Evaluator<F, B, R> for ScaleExpr<Op, F>
+impl<F, B, Op, K, const RANK: usize> Evaluator<F, B, RANK> for MapExpr<Op, K>
 where
-    F: Semiring,
+    F: Data,
     B: Backend<F>,
-    Op: Evaluator<F, B, R>,
+    K: UnaryKernel<F>,
+    Op: Evaluator<F, B, RANK>,
 {
-    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R> {
+    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, RANK> {
         let view = self.op.eval(backend);
 
-        let storage = backend.scale(&view.storage, self.factor);
+        let storage = backend.unary(&view.storage, self.kernel);
 
         Base::from_parts(storage, view.shape, view.strides, view.offset)
-    }
-}
-
-impl<F, B, L, Rhs, const R: usize> Evaluator<F, B, R> for SubExpr<L, Rhs>
-where
-    F: Ring,
-    B: Backend<F>,
-    L: Evaluator<F, B, R>,
-    Rhs: Evaluator<F, B, R>,
-{
-    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R> {
-        let l = self.left.eval(backend);
-        let r = self.right.eval(backend);
-
-        let storage = backend.binary::<SubKernel>(&l.storage, &r.storage);
-
-        Base::new(storage, l.shape)
     }
 }
 

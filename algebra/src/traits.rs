@@ -57,3 +57,27 @@ pub trait Discretization: Sized {
     fn ceil(self) -> Self;
     fn round(self) -> Self;
 }
+
+// kernels
+pub trait KernelBase: Copy + Clone + Debug + 'static {}
+impl<T: Copy + Clone + Debug + 'static> KernelBase for T {}
+
+pub trait UnaryKernel<F>: KernelBase {
+    fn apply(&self, x: F) -> F;
+}
+
+pub trait BinaryKernel<F>: KernelBase {
+    fn apply(&self, x: F, y: F) -> F;
+}
+
+pub trait ReduceKernel<F>: KernelBase {
+    fn init() -> F;
+    fn step(acc: F, x: F) -> F;
+}
+
+pub trait StreamKernel<F>: Copy + Clone + Debug + 'static {
+    type State: Copy;
+
+    fn init(&self) -> Self::State;
+    fn step(&self, state: &mut Self::State, input: F) -> F;
+}

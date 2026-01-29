@@ -6,138 +6,19 @@ pub struct IdentityExpr;
 pub struct ConstExpr<F>(pub F);
 
 #[derive(Debug, Clone)]
+pub struct LoadExpr<F>(pub F);
+
+#[derive(Debug, Clone)]
 pub struct LetExpr<Val, Body> {
     pub value: Val,
     pub body: Body,
 }
 
-// Linear operators
-#[derive(Debug, Clone)]
-pub struct AddExpr<L, R> {
-    pub left: L,
-    pub right: R,
-}
-
-#[derive(Debug, Clone)]
-pub struct SubExpr<L, R> {
-    pub left: L,
-    pub right: R,
-}
-
-#[derive(Debug, Clone)]
-pub struct MulExpr<L, R> {
-    pub left: L,
-    pub right: R,
-}
-
-#[derive(Debug, Clone)]
-pub struct DivExpr<L, R> {
-    pub left: L,
-    pub right: R,
-}
-
-#[derive(Debug, Clone)]
-pub struct ScaleExpr<Op, F> {
-    pub op: Op,
-    pub factor: F,
-}
-
-// Nonlinear operators
-#[derive(Debug, Clone)]
-pub struct AbsExpr<Op> {
-    pub op: Op,
-}
-
-#[derive(Debug, Clone)]
-pub struct ExpExpr<Op> {
-    pub op: Op,
-}
-
-#[derive(Debug, Clone)]
-pub struct LogExpr<Op> {
-    pub op: Op,
-}
-
-#[derive(Debug, Clone)]
-pub struct SqrtExpr<Op> {
-    pub op: Op,
-}
-
-#[derive(Debug, Clone)]
-pub struct PowExpr<Op, F> {
-    pub op: Op,
-    pub exp: F,
-}
-
-#[derive(Debug, Clone)]
-pub struct SinExpr<Op> {
-    pub op: Op,
-}
-
-#[derive(Debug, Clone)]
-pub struct CosExpr<Op> {
-    pub op: Op,
-}
-
-// Time series
-#[derive(Debug, Clone)]
-pub struct LagExpr<Op> {
-    pub op: Op,
-    pub n: usize,
-}
-
-// Statistical
-#[derive(Debug, Clone)]
-pub struct GaussianExpr<Op, F> {
-    pub x: Op,
-    pub mean: F,
-    pub sigma: F,
-}
-
-// Control / branching
 #[derive(Debug, Clone)]
 pub struct IfExpr<Cond, Then, Else> {
     pub cond: Cond,
     pub then_: Then,
     pub else_: Else,
-}
-
-// Comparison
-#[derive(Debug, Clone)]
-pub struct MinExpr<L, R> {
-    pub left: L,
-    pub right: R,
-}
-
-#[derive(Debug, Clone)]
-pub struct MaxExpr<L, R> {
-    pub left: L,
-    pub right: R,
-}
-
-#[derive(Debug, Clone)]
-pub struct ClampExpr<Op, F> {
-    pub op: Op,
-    pub lo: F,
-    pub hi: F,
-}
-
-#[derive(Debug, Clone)]
-pub struct LtExpr<L, R> {
-    pub left: L,
-    pub right: R,
-}
-
-#[derive(Debug, Clone)]
-pub struct GtExpr<L, R> {
-    pub left: L,
-    pub right: R,
-}
-
-#[derive(Debug, Clone)]
-pub struct EqExpr<L, R> {
-    pub left: L,
-    pub right: R,
 }
 
 #[derive(Debug, Clone)]
@@ -167,11 +48,30 @@ pub struct SelectExpr<Op> {
 }
 
 #[derive(Debug, Clone)]
-pub struct CoendExpr<L, R> {
+pub struct ZipExpr<L, R, K> {
     pub left: L,
     pub right: R,
-    pub axis_l: usize,
-    pub axis_r: usize,
+    pub kernel: K,
+}
+
+#[derive(Debug, Clone)]
+pub struct MapExpr<Op, K> {
+    pub op: Op,
+    pub kernel: K,
+}
+
+#[derive(Debug, Clone)]
+pub struct ContractExpr<L, R> {
+    pub left: L,
+    pub right: R,
+    pub axes: (Vec<usize>, Vec<usize>),
+}
+
+#[derive(Debug, Clone)]
+pub struct ScanExpr<Op, F, K> {
+    pub op: Op,
+    pub init: F,
+    pub kernel: K,
 }
 
 // TODO: Distance metrics

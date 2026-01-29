@@ -1,5 +1,7 @@
 use super::{Lift, Tensor};
-use algebra::{AddExpr, BroadcastShape, CanBroadcastWith, Semiring, Shape, True, TypeEq};
+use algebra::{
+    AddKernel, BroadcastShape, CanBroadcastWith, Semiring, Shape, True, TypeEq, ZipExpr,
+};
 use std::ops::Add;
 
 // TODO: Auto broadcast
@@ -38,12 +40,13 @@ where
     <ShL as BroadcastShape<ShR>>::Output: Shape,
     [(); <ShL as BroadcastShape<ShR>>::Output::RANK]: Sized,
 {
-    type Output = Tensor<F, <ShL as BroadcastShape<ShR>>::Output, AddExpr<EL, ER>>;
+    type Output = Tensor<F, <ShL as BroadcastShape<ShR>>::Output, ZipExpr<EL, ER, AddKernel>>;
 
     fn add(self, rhs: Tensor<F, ShR, ER>) -> Self::Output {
-        Tensor::wrap(AddExpr {
+        Tensor::wrap(ZipExpr {
             left: self.expr,
             right: rhs.expr,
+            kernel: AddKernel,
         })
     }
 }
@@ -53,12 +56,13 @@ where
     F: Semiring + Lift<F>,
     Sh: Shape,
 {
-    type Output = Tensor<F, Sh, AddExpr<LhsExpr, <F as Lift<F>>::Output>>;
+    type Output = Tensor<F, Sh, ZipExpr<LhsExpr, <F as Lift<F>>::Output, AddKernel>>;
 
     fn add(self, rhs: F) -> Self::Output {
-        Tensor::wrap(AddExpr {
+        Tensor::wrap(ZipExpr {
             left: self.expr,
             right: rhs.lift(),
+            kernel: AddKernel,
         })
     }
 }
