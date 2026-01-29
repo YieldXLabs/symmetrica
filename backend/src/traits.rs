@@ -48,3 +48,11 @@ pub trait Backend<F: Data> {
     fn stream<K: StreamKernel<F>>(&mut self, input: &Self::Repr, kernel: K) -> Self::Repr;
     fn reduce<K: ReduceKernel<F>>(&mut self, input: &Self::Repr) -> F;
 }
+
+// TODO: Checkpoints
+// pub struct CheckpointId(String);
+// pub trait CheckpointBackend<F: Data>: Backend<F> {
+//     fn checkpoint(&self, data: &Self::Repr) -> CheckpointId;
+//     fn restore(&mut self, id: CheckpointId) -> Self::Repr;
+//     fn delete(&mut self, id: CheckpointId);
+// }
