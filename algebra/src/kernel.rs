@@ -81,3 +81,21 @@ impl<F: Real> UnaryKernel<F> for AbsKernel {
         x.abs()
     }
 }
+
+// TODO: Fusion
+// pub trait FusedKernel<F>: Copy + Clone {
+//     fn execute(&self, x: F, y: Option<F>) -> F;
+// }
+
+// // A chain of two kernels: K2(K1(x))
+// #[derive(Clone, Copy)]
+// pub struct ChainedKernel<K1, K2> {
+//     k1: K1,
+//     k2: K2,
+// }
+
+// impl<F, K1: UnaryKernel<F>, K2: UnaryKernel<F>> FusedKernel<F> for ChainedKernel<K1, K2> {
+//     fn execute(&self, x: F, _: Option<F>) -> F {
+//         self.k2.apply(self.k1.apply(x))
+//     }
+// }
