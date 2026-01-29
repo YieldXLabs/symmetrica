@@ -16,7 +16,6 @@ pub struct Base<S, F, const R: usize> {
     _marker: PhantomData<F>,
 }
 
-// TODO: ones_like, zeros_like, full_like
 impl<S, F, const R: usize> Base<S, F, R> {
     pub fn new(storage: S, shape: [usize; R]) -> Self {
         let strides = Self::compute_strides(&shape);
@@ -73,6 +72,7 @@ impl<F: Real, B: Backend<F>, const R: usize> Differentiable<F, B, R> for Dense<F
 }
 
 // TODO: implement toeplitz(), zeros(), ones(), full(), eye(), one_hot(), random()
+// TODO: ones_like, zeros_like, full_like
 // TODO: implement slice over axes
 #[derive(Debug, Clone)]
 pub struct Tensor<F, Sh: Shape, E = Dense<F, { Sh::RANK }>> {
