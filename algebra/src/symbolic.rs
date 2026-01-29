@@ -82,6 +82,18 @@ impl<Rhs: Bool> And<Rhs> for False {
     type Result = False;
 }
 
+pub type IfThenElse<Cond, T, F> = <Cond as SelectType<T, F>>::Result;
+
+pub trait SelectType<T, F> {
+    type Result;
+}
+impl<T, F> SelectType<T, F> for True {
+    type Result = T;
+}
+impl<T, F> SelectType<T, F> for False {
+    type Result = F;
+}
+
 pub trait TypeEq<Other> {
     type Result;
 }
@@ -521,3 +533,6 @@ macro_rules! Axes {
         $crate::symbolic::Cons<$head, Axes!($($tail),*)>
     };
 }
+
+// TODO: Add #[derive(Label)] macro
+// TODO: Dim<L, N> to combine names with sizes
