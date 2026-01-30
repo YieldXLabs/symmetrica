@@ -55,7 +55,70 @@ impl<F: Data> Backend<F> for GenericBackend<F> {
         strides: &[usize],
         offset: usize,
     ) -> Self::Repr {
-        todo!()
+        let numel: usize = shape.iter().product();
+        let mut dst = Self::Repr::alloc(numel);
+
+        let src_slice = src.as_slice();
+        let dst_slice = dst.as_mut_slice();
+
+        match shape.len() {
+            0 => {
+                dst_slice[0] = src_slice[offset];
+            }
+            1 => {
+                for i in 0..shape[0] {
+                    dst_slice[i] = src_slice[offset + i * strides[0]];
+                }
+            }
+            2 => {
+                let (h, w) = (shape[0], shape[1]);
+                let (stride_h, stride_w) = (strides[0], strides[1]);
+                let mut dst_idx = 0;
+
+                for i in 0..h {
+                    let mut src_idx = offset + i * stride_h;
+
+                    for _ in 0..w {
+                        dst_slice[dst_idx] = src_slice[src_idx];
+                        dst_idx += 1;
+                        src_idx += stride_w;
+                    }
+                }
+            }
+            _ => {
+                let rank = shape.len();
+                let mut idx = vec![0; rank];
+
+                for linear in 0..numel {
+                    let mut src_idx = offset;
+
+                    match rank {
+                        3 => {
+                            src_idx += idx[0] * strides[0];
+                            src_idx += idx[1] * strides[1];
+                            src_idx += idx[2] * strides[2];
+                        }
+                        _ => {
+                            for i in 0..rank {
+                                src_idx += idx[i] * strides[i];
+                            }
+                        }
+                    }
+
+                    dst_slice[linear] = src_slice[src_idx];
+
+                    for i in (0..rank).rev() {
+                        idx[i] += 1;
+                        if idx[i] < shape[i] {
+                            break;
+                        }
+                        idx[i] = 0;
+                    }
+                }
+            }
+        }
+
+        dst
     }
 
     fn unary<K: UnaryKernel<F>>(&mut self, input: &Self::Repr, kernel: K) -> Self::Repr {
