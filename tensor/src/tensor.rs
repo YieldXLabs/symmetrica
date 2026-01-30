@@ -74,16 +74,16 @@ impl<S, F, const R: usize> Base<S, F, R> {
     }
 }
 
-pub type Dense<F, const R: usize> = Base<Arc<Vec<F>>, F, R>;
+pub type Host<F, const R: usize> = Base<Arc<Vec<F>>, F, R>;
 
-impl<F: Data, B: Backend<F>, const R: usize> Evaluator<F, B, R> for Dense<F, R> {
+impl<F: Data, B: Backend<F>, const R: usize> Evaluator<F, B, R> for Host<F, R> {
     fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R> {
         let storage = backend.pure(&self.storage);
         Base::from_parts(storage, self.shape, self.strides, self.offset)
     }
 }
 
-impl<F: Real, B: Backend<F>, const R: usize> Differentiable<F, B, R> for Dense<F, R> {
+impl<F: Real, B: Backend<F>, const R: usize> Differentiable<F, B, R> for Host<F, R> {
     type Adjoint = LeafAdjoint;
 
     fn forward(&self, backend: &mut B) -> (Base<B::Repr, F, R>, Self::Adjoint) {
@@ -96,7 +96,7 @@ impl<F: Real, B: Backend<F>, const R: usize> Differentiable<F, B, R> for Dense<F
 // TODO: ones_like, zeros_like, full_like
 // TODO: implement slice over axes
 #[derive(Debug, Clone)]
-pub struct Tensor<F, Sh: Shape, E = Dense<F, { Sh::RANK }>> {
+pub struct Tensor<F, Sh: Shape, E = Host<F, { Sh::RANK }>> {
     pub expr: E,
     pub _marker: PhantomData<(F, Sh)>,
 }
@@ -168,10 +168,10 @@ impl<F: Data, Sh: Shape, E> Tensor<F, Sh, E> {
     }
 }
 
-impl<F: Data, const R: usize> Tensor<F, DynRank<R>, Dense<F, R>> {
+impl<F: Data, const R: usize> Tensor<F, DynRank<R>, Host<F, R>> {
     pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Self {
         debug_assert_eq!(data.len(), shape.iter().product::<usize>());
-        Tensor::wrap(Dense::new(Arc::new(data), shape))
+        Tensor::wrap(Host::new(Arc::new(data), shape))
     }
 
     pub fn from_slice(data: &[F], shape: [usize; R]) -> Self {
@@ -185,7 +185,7 @@ impl<F: Data, const R: usize> Tensor<F, DynRank<R>, Dense<F, R>> {
         Tensor::wrap(input.lift())
     }
 
-    pub fn into_named<NewSh: Shape>(self) -> Tensor<F, NewSh, Dense<F, R>> {
+    pub fn into_named<NewSh: Shape>(self) -> Tensor<F, NewSh, Host<F, R>> {
         debug_assert_eq!(NewSh::RANK, R, "Rank mismatch");
         Tensor::wrap(self.expr)
     }
