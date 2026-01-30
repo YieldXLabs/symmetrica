@@ -48,22 +48,12 @@ impl<F: Data> Backend<F> for GenericBackend<F> {
         host_vec
     }
 
-    fn compact<const R: usize>(
+    fn compact(
         &mut self,
         src: &Self::Repr,
-        layout: crate::Layout<R>,
-    ) -> Self::Repr {
-        todo!()
-    }
-
-    fn contract<const RL: usize, const RR: usize>(
-        &mut self,
-        lhs: &Self::Repr,
-        lhs_layout: crate::Layout<RL>,
-        axis_l: usize,
-        rhs: &Self::Repr,
-        rhs_layout: crate::Layout<RR>,
-        axis_r: usize,
+        shape: &[usize],
+        strides: &[usize],
+        offset: usize,
     ) -> Self::Repr {
         todo!()
     }
