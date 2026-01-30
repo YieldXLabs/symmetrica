@@ -18,12 +18,10 @@ pub struct Base<S, F, const R: usize> {
 
 impl<S, F, const R: usize> Base<S, F, R> {
     pub fn new(storage: S, shape: [usize; R]) -> Self {
-        let strides = Self::compute_strides(&shape);
-
         Self {
             storage,
             shape,
-            strides,
+            strides: Self::compute_strides(&shape),
             offset: 0,
             _marker: PhantomData,
         }
@@ -81,7 +79,6 @@ pub type Dense<F, const R: usize> = Base<Arc<Vec<F>>, F, R>;
 impl<F: Data, B: Backend<F>, const R: usize> Evaluator<F, B, R> for Dense<F, R> {
     fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R> {
         let storage = backend.pure(&self.storage);
-
         Base::from_parts(storage, self.shape, self.strides, self.offset)
     }
 }
@@ -166,7 +163,6 @@ impl<F: Data, Sh: Shape, E> Tensor<F, Sh, E> {
         E: Evaluator<F, B, { Sh::RANK }>,
     {
         let view = self.expr.eval(backend);
-
         backend.to_host(&view.storage)
     }
 }
@@ -217,7 +213,6 @@ impl<F: Real, Sh: Shape, E> Tensor<F, Sh, E> {
         E: Differentiable<F, B, { Sh::RANK }>,
     {
         let (res, adjoint) = self.expr.forward(backend);
-
         (res, GradientTape::new(adjoint))
     }
 }
