@@ -30,6 +30,7 @@ impl<S, F, const R: usize> Base<S, F, R> {
     }
 
     pub fn from_parts(storage: S, shape: [usize; R], strides: [usize; R], offset: usize) -> Self {
+        debug_assert!(shape.iter().all(|&d| d > 0));
         Self {
             storage,
             shape,
@@ -37,6 +38,29 @@ impl<S, F, const R: usize> Base<S, F, R> {
             offset,
             _marker: PhantomData,
         }
+    }
+
+    pub fn is_dense(&self) -> bool {
+        if self.offset != 0 {
+            return false;
+        }
+
+        let mut stride = 1;
+
+        for i in (0..R).rev() {
+            if self.shape[i] > 1 {
+                if self.strides[i] != stride {
+                    return false;
+                }
+                stride *= self.shape[i];
+            }
+        }
+
+        true
+    }
+
+    pub fn numel(&self) -> usize {
+        self.shape.iter().product()
     }
 
     pub fn compute_strides(shape: &[usize; R]) -> [usize; R] {
