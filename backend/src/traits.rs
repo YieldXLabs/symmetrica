@@ -1,4 +1,4 @@
-use algebra::{BinaryKernel, Data, ReduceKernel, Semiring, StreamKernel, UnaryKernel};
+use algebra::{BinaryKernel, Data, ReduceKernel, StreamKernel, UnaryKernel};
 use std::fmt::Debug;
 
 pub trait Storage<F>: Debug + Clone + Send + Sync {

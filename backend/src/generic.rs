@@ -55,7 +55,7 @@ impl<F: Data> Backend<F> for GenericBackend<F> {
         strides: &[usize],
         offset: usize,
     ) -> Self::Repr {
-        let numel: usize = shape.iter().product();
+        let numel = shape.iter().product::<usize>();
         let mut dst = Self::Repr::alloc(numel);
 
         let src_slice = src.as_slice();
