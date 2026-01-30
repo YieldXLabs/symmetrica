@@ -75,7 +75,7 @@ pub trait ReduceKernel<F>: KernelBase {
     fn step(acc: F, x: F) -> F;
 }
 
-pub trait StreamKernel<F>: Copy + Clone + Debug + 'static {
+pub trait StreamKernel<F>: KernelBase {
     type State: Copy;
 
     fn init(&self) -> Self::State;
