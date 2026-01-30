@@ -1,6 +1,5 @@
-use std::ops::Add;
-
 use super::traits::{Data, Real, Semiring, Zero};
+use core::ops::Add;
 
 // Generalized Linear Algebra
 pub trait Module<S: Semiring>: Data + Add<Output = Self> + Zero {

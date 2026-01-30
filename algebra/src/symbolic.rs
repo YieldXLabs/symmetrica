@@ -1,6 +1,6 @@
 use core::fmt::Debug;
 use core::marker::PhantomData;
-use std::usize;
+use core::usize;
 
 // Core Types
 #[derive(Debug, Clone, Copy)]
