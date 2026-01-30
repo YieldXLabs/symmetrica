@@ -1,4 +1,4 @@
-use super::{Differentiable, Evaluator, GradientTape, LeafAdjoint, Lift, Lower};
+use super::{Differentiable, Evaluator, GradientTape, LeafAdjoint, Lift, Lower, PackDense};
 use algebra::{
     BroadcastExpr, BroadcastMap, Data, DynRank, MapExpr, Permutation, Real, ReshapeExpr,
     ScaleKernel, Semiring, Shape, TransposeExpr,
@@ -163,7 +163,7 @@ impl<F: Data, Sh: Shape, E> Tensor<F, Sh, E> {
         E: Evaluator<F, B, { Sh::RANK }>,
     {
         let view = self.expr.eval(backend);
-        let dense = view.lower(backend);
+        let dense = Lower::<PackDense, B>::lower(&view, backend);
         backend.to_host(&dense)
     }
 }

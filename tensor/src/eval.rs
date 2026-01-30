@@ -1,4 +1,4 @@
-use super::{Base, Evaluator, Lower};
+use super::{Base, Evaluator, Lower, PackDense};
 use algebra::{BinaryKernel, Data, MapExpr, ReshapeExpr, TransposeExpr, UnaryKernel, ZipExpr};
 use backend::Backend;
 
@@ -14,8 +14,8 @@ where
         let l_view = self.left.eval(backend);
         let r_view = self.right.eval(backend);
 
-        let l_dense = l_view.lower(backend);
-        let r_dense = r_view.lower(backend);
+        let l_dense = Lower::<PackDense, B>::lower(&l_view, backend);
+        let r_dense = Lower::<PackDense, B>::lower(&r_view, backend);
 
         let storage = backend.binary(&l_dense, &r_dense, self.kernel);
 
@@ -32,7 +32,7 @@ where
 {
     fn eval(&self, backend: &mut B) -> Base<B::Repr, F, RANK> {
         let view = self.op.eval(backend);
-        let input = view.lower(backend);
+        let input = Lower::<PackDense, B>::lower(&view, backend);
 
         let storage = backend.unary(&input, self.kernel);
 

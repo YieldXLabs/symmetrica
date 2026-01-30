@@ -2,12 +2,14 @@ use super::Base;
 use algebra::Data;
 use backend::Backend;
 
+pub struct PackDense;
+
 pub trait Lower<Target, B> {
     type Output;
     fn lower(&self, backend: &mut B) -> Self::Output;
 }
 
-impl<F, B, const R: usize> Lower<B::Repr, B> for Base<B::Repr, F, R>
+impl<F, B, const R: usize> Lower<PackDense, B> for Base<B::Repr, F, R>
 where
     F: Data,
     B: Backend<F>,
