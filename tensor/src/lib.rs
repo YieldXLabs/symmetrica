@@ -10,3 +10,4 @@ pub mod autodiff;
 pub mod ops;
 pub use autodiff::*;
 pub mod lower;
+pub use lower::*;
