@@ -1,39 +1,32 @@
 use super::{Backend, Storage, UnifiedStorage};
 use algebra::{BinaryKernel, Data, ReduceKernel, StreamKernel, UnaryKernel};
-use std::marker::PhantomData;
 
 #[derive(Debug, Clone, Copy)]
-pub struct GenericBackend<F: Data> {
-    _marker: PhantomData<F>,
-}
+pub struct GenericBackend;
 
-impl<F: Data> GenericBackend<F> {
+impl GenericBackend {
     pub fn new() -> Self {
-        Self {
-            _marker: PhantomData,
-        }
+        Self
     }
 }
 
-impl<F: Data> Default for GenericBackend<F> {
+impl Default for GenericBackend {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<F: Data> Backend<F> for GenericBackend<F> {
-    type Repr = UnifiedStorage<F>;
+impl Backend for GenericBackend {
+    type Storage<T: Data> = UnifiedStorage<T>;
 
-    fn pure(&mut self, data: &[F]) -> Self::Repr {
-        let mut storage = Self::Repr::alloc(data.len());
+    fn pure<T: Data>(&mut self, data: &[T]) -> Self::Storage<T> {
+        let mut storage = UnifiedStorage::<T>::alloc(data.len());
         storage.as_mut_slice().copy_from_slice(data);
-
         storage
     }
 
-    fn to_host(&mut self, device_data: &Self::Repr) -> Vec<F> {
+    fn to_host<T: Data>(&mut self, device_data: &Self::Storage<T>) -> Vec<T> {
         let mut host_vec = Vec::with_capacity(device_data.len());
-
         let src_slice = device_data.as_slice();
 
         unsafe {
@@ -44,19 +37,18 @@ impl<F: Data> Backend<F> for GenericBackend<F> {
             );
             host_vec.set_len(device_data.len());
         }
-
         host_vec
     }
 
-    fn compact(
+    fn compact<T: Data>(
         &mut self,
-        src: &Self::Repr,
+        src: &Self::Storage<T>,
         shape: &[usize],
         strides: &[usize],
         offset: usize,
-    ) -> Self::Repr {
+    ) -> Self::Storage<T> {
         let numel = shape.iter().product::<usize>();
-        let mut dst = Self::Repr::alloc(numel);
+        let mut dst = UnifiedStorage::<T>::alloc(numel);
 
         let src_slice = src.as_slice();
         let dst_slice = dst.as_mut_slice();
@@ -121,8 +113,15 @@ impl<F: Data> Backend<F> for GenericBackend<F> {
         dst
     }
 
-    fn unary<K: UnaryKernel<F>>(&mut self, input: &Self::Repr, kernel: K) -> Self::Repr {
-        let mut output = Self::Repr::alloc(input.len());
+    fn unary<I: Data, K: UnaryKernel<I>>(
+        &mut self,
+        input: &Self::Storage<I>,
+        kernel: K,
+    ) -> Self::Storage<K::Output>
+    where
+        K::Output: Data,
+    {
+        let mut output = UnifiedStorage::<K::Output>::alloc(input.len());
         let input_slice = input.as_slice();
         let output_slice = output.as_mut_slice();
 
@@ -133,13 +132,17 @@ impl<F: Data> Backend<F> for GenericBackend<F> {
         output
     }
 
-    fn binary<K: BinaryKernel<F>>(
+    fn binary<L: Data, R: Data, K: BinaryKernel<L, R>>(
         &mut self,
-        lhs: &Self::Repr,
-        rhs: &Self::Repr,
+        lhs: &Self::Storage<L>,
+        rhs: &Self::Storage<R>,
         kernel: K,
-    ) -> Self::Repr {
-        let mut output = Self::Repr::alloc(lhs.len());
+    ) -> Self::Storage<K::Output>
+    where
+        K::Output: Data,
+    {
+        debug_assert_eq!(lhs.len(), rhs.len());
+        let mut output = UnifiedStorage::<K::Output>::alloc(lhs.len());
         let lhs_slice = lhs.as_slice();
         let rhs_slice = rhs.as_slice();
         let output_slice = output.as_mut_slice();
@@ -151,8 +154,15 @@ impl<F: Data> Backend<F> for GenericBackend<F> {
         output
     }
 
-    fn stream<K: StreamKernel<F>>(&mut self, input: &Self::Repr, kernel: K) -> Self::Repr {
-        let mut output = Self::Repr::alloc(input.len());
+    fn stream<I: Data, K: StreamKernel<I>>(
+        &mut self,
+        input: &Self::Storage<I>,
+        kernel: K,
+    ) -> Self::Storage<K::Output>
+    where
+        K::Output: Data,
+    {
+        let mut output = UnifiedStorage::<K::Output>::alloc(input.len());
         let input_slice = input.as_slice();
         let output_slice = output.as_mut_slice();
         let mut state = kernel.init();
@@ -164,7 +174,13 @@ impl<F: Data> Backend<F> for GenericBackend<F> {
         output
     }
 
-    fn reduce<K: ReduceKernel<F>>(&mut self, input: &Self::Repr) -> F {
+    fn reduce<I: Data, K: ReduceKernel<I>>(
+        &mut self,
+        input: &Self::Storage<I>,
+    ) -> Self::Storage<K::Output>
+    where
+        K::Output: Data,
+    {
         let input_slice = input.as_slice();
         let mut acc = K::init();
 
@@ -172,6 +188,9 @@ impl<F: Data> Backend<F> for GenericBackend<F> {
             acc = K::step(acc, val);
         }
 
-        acc
+        let mut out = UnifiedStorage::<K::Output>::alloc(1);
+        out.as_mut_slice()[0] = K::finish(acc);
+
+        out
     }
 }

@@ -8,31 +8,55 @@ pub trait Storage<F>: Debug + Clone + Send + Sync {
     fn as_mut_slice(&mut self) -> &mut [F];
 }
 
-pub trait Backend<F: Data> {
-    type Repr: Storage<F>;
+pub trait Backend {
+    type Storage<T: Data>: Storage<T>;
 
     // Memory management
-    fn pure(&mut self, data: &[F]) -> Self::Repr;
-    fn to_host(&mut self, device_data: &Self::Repr) -> Vec<F>;
-    fn compact(
+    fn pure<T: Data>(&mut self, data: &[T]) -> Self::Storage<T>;
+
+    fn to_host<T: Data>(&mut self, device_data: &Self::Storage<T>) -> Vec<T>;
+
+    fn compact<T: Data>(
         &mut self,
-        src: &Self::Repr,
+        src: &Self::Storage<T>,
         shape: &[usize],
         strides: &[usize],
         offset: usize,
-    ) -> Self::Repr;
+    ) -> Self::Storage<T>;
 
     // Generic Kernels
     // The Kernel 'K' defines the math
-    fn unary<K: UnaryKernel<F>>(&mut self, input: &Self::Repr, kernel: K) -> Self::Repr;
-    fn binary<K: BinaryKernel<F>>(
+    fn unary<I: Data, K: UnaryKernel<I>>(
         &mut self,
-        lhs: &Self::Repr,
-        rhs: &Self::Repr,
+        input: &Self::Storage<I>,
         kernel: K,
-    ) -> Self::Repr;
-    fn stream<K: StreamKernel<F>>(&mut self, input: &Self::Repr, kernel: K) -> Self::Repr;
-    fn reduce<K: ReduceKernel<F>>(&mut self, input: &Self::Repr) -> F;
+    ) -> Self::Storage<K::Output>
+    where
+        K::Output: Data;
+
+    fn binary<L: Data, R: Data, K: BinaryKernel<L, R>>(
+        &mut self,
+        lhs: &Self::Storage<L>,
+        rhs: &Self::Storage<R>,
+        kernel: K,
+    ) -> Self::Storage<K::Output>
+    where
+        K::Output: Data;
+
+    fn reduce<I: Data, K: ReduceKernel<I>>(
+        &mut self,
+        input: &Self::Storage<I>,
+    ) -> Self::Storage<K::Output>
+    where
+        K::Output: Data;
+
+    fn stream<I: Data, K: StreamKernel<I>>(
+        &mut self,
+        input: &Self::Storage<I>,
+        kernel: K,
+    ) -> Self::Storage<K::Output>
+    where
+        K::Output: Data;
 }
 
 // TODO: Checkpoints

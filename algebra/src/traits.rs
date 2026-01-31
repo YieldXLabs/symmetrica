@@ -62,22 +62,31 @@ pub trait Discretization: Sized {
 pub trait KernelBase: Copy + Clone + Debug + 'static {}
 impl<T: Copy + Clone + Debug + 'static> KernelBase for T {}
 
-pub trait UnaryKernel<F>: KernelBase {
-    fn apply(&self, x: F) -> F;
+pub trait UnaryKernel<In>: KernelBase {
+    type Output: Data;
+
+    fn apply(&self, x: In) -> Self::Output;
 }
 
-pub trait BinaryKernel<F>: KernelBase {
-    fn apply(&self, x: F, y: F) -> F;
+pub trait BinaryKernel<L, R>: KernelBase {
+    type Output: Data;
+
+    fn apply(&self, lhs: L, rhs: R) -> Self::Output;
 }
 
-pub trait ReduceKernel<F>: KernelBase {
-    fn init() -> F;
-    fn step(acc: F, x: F) -> F;
+pub trait ReduceKernel<In>: KernelBase {
+    type Output: Data;
+    type Acc: Data + Copy;
+
+    fn init() -> Self::Acc;
+    fn step(acc: Self::Acc, x: In) -> Self::Acc;
+    fn finish(acc: Self::Acc) -> Self::Output;
 }
 
-pub trait StreamKernel<F>: KernelBase {
-    type State: Copy;
+pub trait StreamKernel<In>: KernelBase {
+    type State: Clone;
+    type Output: Data;
 
     fn init(&self) -> Self::State;
-    fn step(&self, state: &mut Self::State, input: F) -> F;
+    fn step(&self, state: &mut Self::State, input: In) -> Self::Output;
 }

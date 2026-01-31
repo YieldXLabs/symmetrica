@@ -4,10 +4,10 @@ use backend::Backend;
 
 pub struct LeafAdjoint;
 
-impl<F: Real, B: Backend<F>, const R: usize> Pullback<F, B, R> for LeafAdjoint {
-    type Gradients = Base<B::Repr, F, R>;
+impl<F: Real, B: Backend, const R: usize> Pullback<F, B, R> for LeafAdjoint {
+    type Gradients = Base<B::Storage<F>, F, R>;
 
-    fn back(&self, _backend: &mut B, grad: Base<B::Repr, F, R>) -> Self::Gradients {
+    fn back(&self, _backend: &mut B, grad: Base<B::Storage<F>, F, R>) -> Self::Gradients {
         grad
     }
 }
@@ -24,11 +24,11 @@ impl<A> GradientTape<A> {
     pub fn backward<F, B, const R: usize>(
         self,
         backend: &mut B,
-        seed_grad: Base<B::Repr, F, R>,
+        seed_grad: Base<B::Storage<F>, F, R>,
     ) -> A::Gradients
     where
         F: Real,
-        B: Backend<F>,
+        B: Backend,
         A: Pullback<F, B, R>,
     {
         self.adjoint.back(backend, seed_grad)

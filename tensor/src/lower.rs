@@ -9,15 +9,15 @@ pub trait Lower<Target, B> {
     fn lower(&self, backend: &mut B) -> Self::Output;
 }
 
-impl<F, B, const R: usize> Lower<PackDense, B> for Base<B::Repr, F, R>
+impl<F, B, const R: usize> Lower<PackDense, B> for Base<B::Storage<F>, F, R>
 where
     F: Data,
-    B: Backend<F>,
-    B::Repr: Clone,
+    B: Backend,
+    B::Storage<F>: Clone,
 {
-    type Output = B::Repr;
+    type Output = B::Storage<F>;
 
-    fn lower(&self, backend: &mut B) -> B::Repr {
+    fn lower(&self, backend: &mut B) -> B::Storage<F> {
         if self.is_dense() {
             self.storage.clone()
         } else {

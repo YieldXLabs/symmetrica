@@ -76,17 +76,17 @@ impl<S, F, const R: usize> Base<S, F, R> {
 
 pub type Host<F, const R: usize> = Base<Arc<Vec<F>>, F, R>;
 
-impl<F: Data, B: Backend<F>, const R: usize> Evaluator<F, B, R> for Host<F, R> {
-    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R> {
+impl<F: Data, B: Backend, const R: usize> Evaluator<F, B, R> for Host<F, R> {
+    fn eval(&self, backend: &mut B) -> Base<B::Storage<F>, F, R> {
         let storage = backend.pure(&self.storage);
         Base::from_parts(storage, self.shape, self.strides, self.offset)
     }
 }
 
-impl<F: Real, B: Backend<F>, const R: usize> Differentiable<F, B, R> for Host<F, R> {
+impl<F: Real, B: Backend, const R: usize> Differentiable<F, B, R> for Host<F, R> {
     type Adjoint = LeafAdjoint;
 
-    fn forward(&self, backend: &mut B) -> (Base<B::Repr, F, R>, Self::Adjoint) {
+    fn forward(&self, backend: &mut B) -> (Base<B::Storage<F>, F, R>, Self::Adjoint) {
         let res = self.eval(backend);
         (res, LeafAdjoint)
     }
@@ -151,14 +151,14 @@ impl<F: Data, Sh: Shape, E> Tensor<F, Sh, E> {
         })
     }
 
-    pub fn collect<B: Backend<F>>(&self, backend: &mut B) -> Base<B::Repr, F, { Sh::RANK }>
+    pub fn collect<B: Backend>(&self, backend: &mut B) -> Base<B::Storage<F>, F, { Sh::RANK }>
     where
         E: Evaluator<F, B, { Sh::RANK }>,
     {
         self.expr.eval(backend)
     }
 
-    pub fn to_vec<B: Backend<F>>(&self, backend: &mut B) -> Vec<F>
+    pub fn to_vec<B: Backend>(&self, backend: &mut B) -> Vec<F>
     where
         E: Evaluator<F, B, { Sh::RANK }>,
     {
@@ -206,10 +206,13 @@ where
 
 // Calculus Ops (Gradients, Physics)
 impl<F: Real, Sh: Shape, E> Tensor<F, Sh, E> {
-    pub fn forward<B: Backend<F>>(
+    pub fn forward<B: Backend>(
         &self,
         backend: &mut B,
-    ) -> (Base<B::Repr, F, { Sh::RANK }>, GradientTape<E::Adjoint>)
+    ) -> (
+        Base<B::Storage<F>, F, { Sh::RANK }>,
+        GradientTape<E::Adjoint>,
+    )
     where
         E: Differentiable<F, B, { Sh::RANK }>,
     {
@@ -270,12 +273,11 @@ macro_rules! tensor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use algebra::TradingFloat;
     use backend::GenericBackend;
 
     #[test]
     fn test_tensor_add() {
-        let mut backend = GenericBackend::<TradingFloat>::new();
+        let mut backend = GenericBackend::new();
         let a = tensor![2.0, 3.0, 5.0];
         let b = tensor![1.0, 3.0, 2.0];
 

@@ -2,7 +2,9 @@ use super::{BinaryKernel, Real, ReduceKernel, Ring, Semiring, StreamKernel, Unar
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct AddKernel;
-impl<F: Semiring> BinaryKernel<F> for AddKernel {
+impl<F: Semiring> BinaryKernel<F, F> for AddKernel {
+    type Output = F;
+
     fn apply(&self, x: F, y: F) -> F {
         x + y
     }
@@ -13,6 +15,8 @@ pub struct ScaleKernel<F> {
     pub factor: F,
 }
 impl<F: Semiring> UnaryKernel<F> for ScaleKernel<F> {
+    type Output = F;
+
     fn apply(&self, x: F) -> F {
         x * self.factor
     }
@@ -20,7 +24,9 @@ impl<F: Semiring> UnaryKernel<F> for ScaleKernel<F> {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct MulKernel;
-impl<F: Semiring> BinaryKernel<F> for MulKernel {
+impl<F: Semiring> BinaryKernel<F, F> for MulKernel {
+    type Output = F;
+
     fn apply(&self, x: F, y: F) -> F {
         x * y
     }
@@ -29,28 +35,46 @@ impl<F: Semiring> BinaryKernel<F> for MulKernel {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SumKernel;
 impl<F: Semiring> ReduceKernel<F> for SumKernel {
+    type Acc = F;
+    type Output = F;
+
     fn init() -> F {
         F::zero()
     }
+
     fn step(acc: F, x: F) -> F {
         acc + x
+    }
+
+    fn finish(acc: F) -> F {
+        acc
     }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ProductKernel;
 impl<F: Semiring> ReduceKernel<F> for ProductKernel {
+    type Acc = F;
+    type Output = F;
+
     fn init() -> F {
         F::one()
     }
+
     fn step(acc: F, x: F) -> F {
         acc * x
+    }
+
+    fn finish(acc: F) -> F {
+        acc
     }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SubKernel;
-impl<F: Ring> BinaryKernel<F> for SubKernel {
+impl<F: Ring> BinaryKernel<F, F> for SubKernel {
+    type Output = F;
+
     fn apply(&self, x: F, y: F) -> F {
         x - y
     }
@@ -63,6 +87,7 @@ pub struct Ema<F> {
 
 impl<F: Ring> StreamKernel<F> for Ema<F> {
     type State = F;
+    type Output = F;
 
     fn init(&self) -> F {
         F::zero()
@@ -77,6 +102,8 @@ impl<F: Ring> StreamKernel<F> for Ema<F> {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct AbsKernel;
 impl<F: Real> UnaryKernel<F> for AbsKernel {
+    type Output = F;
+
     fn apply(&self, x: F) -> F {
         x.abs()
     }

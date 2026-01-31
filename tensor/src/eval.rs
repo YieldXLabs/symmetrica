@@ -5,12 +5,12 @@ use backend::Backend;
 impl<F, B, L, R, K, const RANK: usize> Evaluator<F, B, RANK> for ZipExpr<L, R, K>
 where
     F: Data,
-    B: Backend<F>,
-    K: BinaryKernel<F>,
+    B: Backend,
+    K: BinaryKernel<F, F, Output = F>,
     L: Evaluator<F, B, RANK>,
     R: Evaluator<F, B, RANK>,
 {
-    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, RANK> {
+    fn eval(&self, backend: &mut B) -> Base<B::Storage<F>, F, RANK> {
         let l_view = self.left.eval(backend);
         let r_view = self.right.eval(backend);
 
@@ -26,11 +26,11 @@ where
 impl<F, B, Op, K, const RANK: usize> Evaluator<F, B, RANK> for MapExpr<Op, K>
 where
     F: Data,
-    B: Backend<F>,
-    K: UnaryKernel<F>,
+    B: Backend,
+    K: UnaryKernel<F, Output = F>,
     Op: Evaluator<F, B, RANK>,
 {
-    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, RANK> {
+    fn eval(&self, backend: &mut B) -> Base<B::Storage<F>, F, RANK> {
         let view = self.op.eval(backend);
         let input = Lower::<PackDense, B>::lower(&view, backend);
 
@@ -44,10 +44,10 @@ where
 impl<F, B, E, const R: usize> Evaluator<F, B, R> for TransposeExpr<E, R>
 where
     F: Data,
-    B: Backend<F>,
+    B: Backend,
     E: Evaluator<F, B, R>,
 {
-    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R> {
+    fn eval(&self, backend: &mut B) -> Base<B::Storage<F>, F, R> {
         let view = self.op.eval(backend);
 
         let mut new_shape = [0; R];
@@ -67,13 +67,13 @@ impl<F, B, E, const R_IN: usize, const R_OUT: usize> Evaluator<F, B, R_OUT>
     for ReshapeExpr<E, R_IN, R_OUT>
 where
     F: Data,
-    B: Backend<F>,
+    B: Backend,
     E: Evaluator<F, B, R_IN>,
 {
-    fn eval(&self, backend: &mut B) -> Base<B::Repr, F, R_OUT> {
+    fn eval(&self, backend: &mut B) -> Base<B::Storage<F>, F, R_OUT> {
         let view = self.op.eval(backend);
 
-        let new_strides = Base::<B::Repr, F, R_OUT>::compute_strides(&self.new_shape);
+        let new_strides = Base::<B::Storage<F>, F, R_OUT>::compute_strides(&self.new_shape);
 
         Base::from_parts(view.storage, self.new_shape, new_strides, 0)
     }
