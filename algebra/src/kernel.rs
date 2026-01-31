@@ -1,6 +1,6 @@
 use super::{BinaryKernel, Real, ReduceKernel, Ring, Semiring, StreamKernel, UnaryKernel};
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct AddKernel;
 impl<F: Semiring> BinaryKernel<F, F> for AddKernel {
     type Output = F;
@@ -22,7 +22,7 @@ impl<F: Semiring> UnaryKernel<F> for ScaleKernel<F> {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct MulKernel;
 impl<F: Semiring> BinaryKernel<F, F> for MulKernel {
     type Output = F;
@@ -32,7 +32,7 @@ impl<F: Semiring> BinaryKernel<F, F> for MulKernel {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct SumKernel;
 impl<F: Semiring> ReduceKernel<F> for SumKernel {
     type Acc = F;
@@ -51,7 +51,7 @@ impl<F: Semiring> ReduceKernel<F> for SumKernel {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct ProductKernel;
 impl<F: Semiring> ReduceKernel<F> for ProductKernel {
     type Acc = F;
@@ -70,7 +70,7 @@ impl<F: Semiring> ReduceKernel<F> for ProductKernel {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct SubKernel;
 impl<F: Ring> BinaryKernel<F, F> for SubKernel {
     type Output = F;
@@ -99,7 +99,7 @@ impl<F: Ring> StreamKernel<F> for Ema<F> {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct AbsKernel;
 impl<F: Real> UnaryKernel<F> for AbsKernel {
     type Output = F;
