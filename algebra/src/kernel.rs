@@ -12,7 +12,7 @@ impl<F: Semiring> BinaryKernel<F, F> for AddKernel {
 
 #[derive(Debug, Clone, Copy)]
 pub struct ScaleKernel<F> {
-    factor: F,
+    pub factor: F,
 }
 impl<F: Semiring> UnaryKernel<F> for ScaleKernel<F> {
     type Output = F;
