@@ -34,8 +34,3 @@ impl<A> GradientTape<A> {
         self.adjoint.back(backend, seed_grad)
     }
 }
-
-// TODO:  Algebraic Graph Theory
-// pub trait Traceback<F: Semiring, ...> {
-//     fn trace(&self, ...);
-// }
