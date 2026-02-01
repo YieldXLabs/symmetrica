@@ -90,3 +90,5 @@ pub trait StreamKernel<In>: KernelBase {
     fn init(&self) -> Self::State;
     fn step(&self, state: &mut Self::State, input: In) -> Self::Output;
 }
+
+// TODO: Heterogeneous data
