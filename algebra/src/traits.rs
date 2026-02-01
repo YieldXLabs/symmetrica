@@ -78,9 +78,9 @@ pub trait ReduceKernel<In>: KernelBase {
     type Output: Data;
     type Acc: Data;
 
-    fn init() -> Self::Acc;
-    fn step(acc: Self::Acc, x: In) -> Self::Acc;
-    fn finish(acc: Self::Acc) -> Self::Output;
+    fn init(&self) -> Self::Acc;
+    fn step(&self, acc: Self::Acc, x: In) -> Self::Acc;
+    fn finish(&self, acc: Self::Acc) -> Self::Output;
 }
 
 pub trait StreamKernel<In>: KernelBase {

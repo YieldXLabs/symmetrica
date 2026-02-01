@@ -177,19 +177,20 @@ impl Backend for GenericBackend {
     fn reduce<I: Data, K: ReduceKernel<I>>(
         &mut self,
         input: &Self::Storage<I>,
+        kernel: K,
     ) -> Self::Storage<K::Output>
     where
         K::Output: Data,
     {
         let input_slice = input.as_slice();
-        let mut acc = K::init();
+        let mut acc = kernel.init();
 
         for &val in input_slice {
-            acc = K::step(acc, val);
+            acc = kernel.step(acc, val);
         }
 
         let mut out = UnifiedStorage::<K::Output>::alloc(1);
-        out.as_mut_slice()[0] = K::finish(acc);
+        out.as_mut_slice()[0] = kernel.finish(acc);
 
         out
     }

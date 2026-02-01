@@ -38,15 +38,15 @@ impl<F: Semiring> ReduceKernel<F> for SumKernel {
     type Acc = F;
     type Output = F;
 
-    fn init() -> F {
+    fn init(&self) -> F {
         F::zero()
     }
 
-    fn step(acc: F, x: F) -> F {
+    fn step(&self, acc: F, x: F) -> F {
         acc + x
     }
 
-    fn finish(acc: F) -> F {
+    fn finish(&self, acc: F) -> F {
         acc
     }
 }
@@ -57,15 +57,15 @@ impl<F: Semiring> ReduceKernel<F> for ProductKernel {
     type Acc = F;
     type Output = F;
 
-    fn init() -> F {
+    fn init(&self) -> F {
         F::one()
     }
 
-    fn step(acc: F, x: F) -> F {
+    fn step(&self, acc: F, x: F) -> F {
         acc * x
     }
 
-    fn finish(acc: F) -> F {
+    fn finish(&self, acc: F) -> F {
         acc
     }
 }

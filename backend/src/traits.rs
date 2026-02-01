@@ -46,6 +46,7 @@ pub trait Backend {
     fn reduce<I: Data, K: ReduceKernel<I>>(
         &mut self,
         input: &Self::Storage<I>,
+        kernel: K,
     ) -> Self::Storage<K::Output>
     where
         K::Output: Data;
