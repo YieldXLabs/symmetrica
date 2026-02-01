@@ -66,5 +66,5 @@ pub trait Backend {
 //     fn restore(&mut self, id: CheckpointId) -> Self::Repr;
 //     fn delete(&mut self, id: CheckpointId);
 // }
-
 // TODO: Distributed computation and shared storage
+// TODO: Quantization
