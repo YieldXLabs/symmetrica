@@ -1,4 +1,4 @@
-use super::{Discretization, Field, One, OrderedField, Real, Ring, Semiring, Zero};
+use super::{Discretization, Field, One, OrderedField, Promote, Real, Ring, Semiring, Zero};
 use core::cmp::Ordering;
 use core::fmt::{self, Display};
 use core::hash::{Hash, Hasher};
@@ -302,5 +302,33 @@ impl Discretization for TradingFloat {
     #[inline]
     fn round(self) -> Self {
         TradingFloat(self.0.round())
+    }
+}
+
+impl Promote<TradingFloat> for TradingFloat {
+    type Output = TradingFloat;
+
+    fn promote_left(self) -> Self::Output {
+        self
+    }
+
+    fn promote_right(rhs: TradingFloat) -> Self::Output {
+        rhs
+    }
+}
+
+impl Promote<bool> for TradingFloat {
+    type Output = TradingFloat;
+
+    fn promote_left(self) -> Self::Output {
+        self
+    }
+
+    fn promote_right(rhs: bool) -> Self::Output {
+        if rhs {
+            TradingFloat::ONE
+        } else {
+            TradingFloat::ZERO
+        }
     }
 }
