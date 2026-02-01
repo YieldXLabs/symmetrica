@@ -76,7 +76,7 @@ pub trait BinaryKernel<L, R>: KernelBase {
 
 pub trait ReduceKernel<In>: KernelBase {
     type Output: Data;
-    type Acc: Data + Copy;
+    type Acc: Data;
 
     fn init() -> Self::Acc;
     fn step(acc: Self::Acc, x: In) -> Self::Acc;
