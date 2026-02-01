@@ -91,4 +91,22 @@ pub trait StreamKernel<In>: KernelBase {
     fn step(&self, state: &mut Self::State, input: In) -> Self::Output;
 }
 
-// TODO: Heterogeneous data
+pub trait Promote<Rhs>: Data {
+    type Output: Data;
+
+    fn promote_left(self) -> Self::Output;
+    fn promote_right(rhs: Rhs) -> Self::Output;
+}
+
+impl<T: Data> Promote<T> for T {
+    type Output = T;
+
+    #[inline(always)]
+    fn promote_left(self) -> T {
+        self
+    }
+    #[inline(always)]
+    fn promote_right(rhs: T) -> T {
+        rhs
+    }
+}
