@@ -76,19 +76,29 @@ impl<S, F, const R: usize> Base<S, F, R> {
 
 pub type Host<F, const R: usize> = Base<Arc<Vec<F>>, F, R>;
 
-impl<F: Data, B: Backend, const R: usize> Evaluator<F, B, R> for Host<F, R> {
+impl<F, B, const R: usize> Evaluator<B, R> for Host<F, R>
+where
+    F: Data,
+    B: Backend,
+{
+    type Data = F;
+
     fn eval(&self, backend: &mut B) -> Base<B::Storage<F>, F, R> {
         let storage = backend.pure(&self.storage);
         Base::from_parts(storage, self.shape, self.strides, self.offset)
     }
 }
 
-impl<F: Real, B: Backend, const R: usize> Differentiable<F, B, R> for Host<F, R> {
-    type Adjoint = LeafAdjoint;
+impl<F, B, const R: usize> Differentiable<B, R> for Host<F, R>
+where
+    F: Real,
+    B: Backend,
+{
+    type Adjoint = LeafAdjoint<F, R>;
 
     fn forward(&self, backend: &mut B) -> (Base<B::Storage<F>, F, R>, Self::Adjoint) {
         let res = self.eval(backend);
-        (res, LeafAdjoint)
+        (res, LeafAdjoint::new())
     }
 }
 
@@ -153,14 +163,14 @@ impl<F: Data, Sh: Shape, E> Tensor<F, Sh, E> {
 
     pub fn collect<B: Backend>(&self, backend: &mut B) -> Base<B::Storage<F>, F, { Sh::RANK }>
     where
-        E: Evaluator<F, B, { Sh::RANK }>,
+        E: Evaluator<B, { Sh::RANK }, Data = F>,
     {
         self.expr.eval(backend)
     }
 
     pub fn to_vec<B: Backend>(&self, backend: &mut B) -> Vec<F>
     where
-        E: Evaluator<F, B, { Sh::RANK }>,
+        E: Evaluator<B, { Sh::RANK }, Data = F>,
     {
         let view = self.expr.eval(backend);
         let dense = Lower::<PackDense, B>::lower(&view, backend);
@@ -214,7 +224,7 @@ impl<F: Real, Sh: Shape, E> Tensor<F, Sh, E> {
         GradientTape<E::Adjoint>,
     )
     where
-        E: Differentiable<F, B, { Sh::RANK }>,
+        E: Differentiable<B, { Sh::RANK }, Data = F>,
     {
         let (res, adjoint) = self.expr.forward(backend);
         (res, GradientTape::new(adjoint))

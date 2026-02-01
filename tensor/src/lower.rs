@@ -6,6 +6,7 @@ pub struct PackDense;
 
 pub trait Lower<Target, B> {
     type Output;
+
     fn lower(&self, backend: &mut B) -> Self::Output;
 }
 
