@@ -1,12 +1,20 @@
-use super::{BinaryKernel, Real, ReduceKernel, Ring, Semiring, StreamKernel, UnaryKernel};
+use super::{BinaryKernel, Promote, Real, ReduceKernel, Ring, Semiring, StreamKernel, UnaryKernel};
 
 #[derive(Debug, Clone, Copy)]
 pub struct AddKernel;
-impl<F: Semiring> BinaryKernel<F, F> for AddKernel {
-    type Output = F;
+impl<L, R> BinaryKernel<L, R> for AddKernel
+where
+    L: Promote<R>,
+    L::Output: Semiring,
+{
+    type Output = L::Output;
 
-    fn apply(&self, x: F, y: F) -> F {
-        x + y
+    #[inline(always)]
+    fn apply(&self, lhs: L, rhs: R) -> Self::Output {
+        let l_prom = lhs.promote_left();
+        let r_prom = L::promote_right(rhs);
+
+        l_prom + r_prom
     }
 }
 
