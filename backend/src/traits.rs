@@ -1,15 +1,17 @@
 use algebra::{BinaryKernel, Data, ReduceKernel, StreamKernel, UnaryKernel};
 use std::fmt::Debug;
 
-pub trait Storage<F>: Debug + Clone + Send + Sync {
+pub trait Storage: Debug + Clone + Send + Sync {
+    type Elem: Data;
+
     fn len(&self) -> usize;
     fn alloc(n: usize) -> Self;
-    fn as_slice(&self) -> &[F];
-    fn as_mut_slice(&mut self) -> &mut [F];
+    fn as_slice(&self) -> &[Self::Elem];
+    fn as_mut_slice(&mut self) -> &mut [Self::Elem];
 }
 
 pub trait Backend {
-    type Storage<T: Data>: Storage<T>;
+    type Storage<T: Data>: Storage<Elem = T>;
 
     // Memory management
     fn pure<T: Data>(&mut self, data: &[T]) -> Self::Storage<T>;

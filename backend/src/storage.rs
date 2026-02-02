@@ -12,12 +12,21 @@ pub struct UnifiedStorage<F: Data> {
 unsafe impl<F: Data> Send for UnifiedStorage<F> {}
 unsafe impl<F: Data> Sync for UnifiedStorage<F> {}
 
-impl<F: Data> Storage<F> for UnifiedStorage<F> {
+impl<F: Data> Storage for UnifiedStorage<F> {
+    type Elem = F;
+
     fn len(&self) -> usize {
         self.len
     }
 
     fn alloc(n: usize) -> Self {
+        if n == 0 {
+            return Self {
+                ptr: NonNull::dangling(),
+                len: 0,
+            };
+        }
+
         let layout = Layout::array::<F>(n).expect("Allocation too large");
         unsafe {
             let raw = alloc_zeroed(layout) as *mut F;
@@ -37,10 +46,16 @@ impl<F: Data> Storage<F> for UnifiedStorage<F> {
 
 impl<F: Data> Clone for UnifiedStorage<F> {
     fn clone(&self) -> Self {
-        let new_storage = <Self as Storage<F>>::alloc(self.len);
+        let new_storage = <Self as Storage>::alloc(self.len);
 
-        unsafe {
-            std::ptr::copy_nonoverlapping(self.ptr.as_ptr(), new_storage.ptr.as_ptr(), self.len);
+        if self.len > 0 {
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    self.ptr.as_ptr(),
+                    new_storage.ptr.as_ptr(),
+                    self.len,
+                );
+            }
         }
 
         new_storage
@@ -49,9 +64,11 @@ impl<F: Data> Clone for UnifiedStorage<F> {
 
 impl<F: Data> Drop for UnifiedStorage<F> {
     fn drop(&mut self) {
-        let layout = Layout::array::<F>(self.len).unwrap();
-        unsafe {
-            dealloc(self.ptr.as_ptr() as *mut u8, layout);
+        if self.len > 0 {
+            let layout = Layout::array::<F>(self.len).unwrap();
+            unsafe {
+                dealloc(self.ptr.as_ptr() as *mut u8, layout);
+            }
         }
     }
 }
