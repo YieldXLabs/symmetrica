@@ -1,4 +1,7 @@
-use super::{BinaryKernel, Promote, Real, ReduceKernel, Ring, Semiring, StreamKernel, UnaryKernel};
+use super::{
+    BinaryKernel, Data, One, OrderedField, Promote, Real, ReduceKernel, Ring, Semiring,
+    StreamKernel, UnaryKernel, Zero,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct AddKernel;
@@ -19,14 +22,22 @@ where
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct ScaleKernel<F> {
-    pub factor: F,
+pub struct ScaleKernel<S> {
+    pub factor: S,
 }
-impl<F: Semiring> UnaryKernel<F> for ScaleKernel<F> {
-    type Output = F;
+impl<In, S> UnaryKernel<In> for ScaleKernel<S>
+where
+    In: Promote<S>,
+    In::Output: Semiring,
+    S: Data,
+{
+    type Output = In::Output;
 
-    fn apply(&self, x: F) -> F {
-        x * self.factor
+    #[inline(always)]
+    fn apply(&self, x: In) -> Self::Output {
+        let x_prom = x.promote_left();
+        let s_prom = In::promote_right(self.factor);
+        x_prom * s_prom
     }
 }
 
@@ -49,38 +60,52 @@ where
 
 #[derive(Debug, Clone, Copy)]
 pub struct SumKernel;
-impl<F: Semiring> ReduceKernel<F> for SumKernel {
-    type Acc = F;
-    type Output = F;
+impl<In> ReduceKernel<In> for SumKernel
+where
+    In: Promote<In>,
+    In::Output: Semiring,
+{
+    type Acc = In::Output;
+    type Output = In::Output;
 
-    fn init(&self) -> F {
-        F::zero()
+    #[inline(always)]
+    fn init(&self) -> Self::Acc {
+        Self::Acc::zero()
     }
 
-    fn step(&self, acc: F, x: F) -> F {
-        acc + x
+    #[inline(always)]
+    fn step(&self, acc: Self::Acc, x: In) -> Self::Acc {
+        acc + x.promote_left()
     }
 
-    fn finish(&self, acc: F) -> F {
+    #[inline(always)]
+    fn finish(&self, acc: Self::Acc) -> Self::Output {
         acc
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct ProductKernel;
-impl<F: Semiring> ReduceKernel<F> for ProductKernel {
-    type Acc = F;
-    type Output = F;
+impl<In> ReduceKernel<In> for ProductKernel
+where
+    In: Promote<In>,
+    In::Output: Semiring,
+{
+    type Acc = In::Output;
+    type Output = In::Output;
 
-    fn init(&self) -> F {
-        F::one()
+    #[inline(always)]
+    fn init(&self) -> Self::Acc {
+        Self::Acc::one()
     }
 
-    fn step(&self, acc: F, x: F) -> F {
-        acc * x
+    #[inline(always)]
+    fn step(&self, acc: Self::Acc, x: In) -> Self::Acc {
+        acc * x.promote_left()
     }
 
-    fn finish(&self, acc: F) -> F {
+    #[inline(always)]
+    fn finish(&self, acc: Self::Acc) -> Self::Output {
         acc
     }
 }
@@ -107,7 +132,11 @@ pub struct Ema<F> {
     alpha: F,
 }
 
-impl<F: Ring> StreamKernel<F> for Ema<F> {
+impl<In, F> StreamKernel<In> for Ema<F>
+where
+    F: Ring,
+    In: Promote<F, Output = F>,
+{
     type State = F;
     type Output = F;
 
@@ -115,19 +144,27 @@ impl<F: Ring> StreamKernel<F> for Ema<F> {
         F::zero()
     }
 
-    fn step(&self, state: &mut F, x: F) -> F {
-        *state = self.alpha * x + (F::one() - self.alpha) * (*state);
+    fn step(&self, state: &mut F, x: In) -> F {
+        let x_prom = x.promote_left();
+
+        *state = (self.alpha * x_prom) + ((F::one() - self.alpha) * *state);
         *state
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct AbsKernel;
-impl<F: Real> UnaryKernel<F> for AbsKernel {
-    type Output = F;
+impl<In> UnaryKernel<In> for AbsKernel
+where
+    In: Promote<In>,
+    In::Output: Real,
+{
+    type Output = In::Output;
 
-    fn apply(&self, x: F) -> F {
-        x.abs()
+    #[inline(always)]
+    fn apply(&self, x: In) -> Self::Output {
+        let x_prom = x.promote_left();
+        x_prom.abs()
     }
 }
 
