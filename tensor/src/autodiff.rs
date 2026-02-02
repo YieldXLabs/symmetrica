@@ -1,5 +1,5 @@
 use super::{Base, Pullback};
-use algebra::Real;
+use algebra::{Data, Real};
 use backend::Backend;
 use core::marker::PhantomData;
 
@@ -22,6 +22,28 @@ impl<F: Real, B: Backend, const R: usize> Pullback<B, R> for LeafAdjoint<F, R> {
 
     fn back(&self, _backend: &mut B, grad: Base<B::Storage<F>, F, R>) -> Self::Gradients {
         grad
+    }
+}
+
+pub struct NoGrad<T: Data, const R: usize> {
+    _marker: PhantomData<T>,
+}
+
+impl<T: Data, const R: usize> NoGrad<T, R> {
+    pub fn new() -> Self {
+        Self {
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<B: Backend, T: Data, const R: usize> Pullback<B, R> for NoGrad<T, R> {
+    type Primal = T;
+    type Cotangent = ();
+    type Gradients = ();
+
+    fn back(&self, _backend: &mut B, _grad: Base<B::Storage<()>, (), R>) {
+        ()
     }
 }
 
