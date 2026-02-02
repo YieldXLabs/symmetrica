@@ -32,11 +32,18 @@ impl<F: Semiring> UnaryKernel<F> for ScaleKernel<F> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct MulKernel;
-impl<F: Semiring> BinaryKernel<F, F> for MulKernel {
-    type Output = F;
+impl<L, R> BinaryKernel<L, R> for MulKernel
+where
+    L: Promote<R>,
+    L::Output: Semiring,
+{
+    type Output = L::Output;
 
-    fn apply(&self, x: F, y: F) -> F {
-        x * y
+    #[inline(always)]
+    fn apply(&self, lhs: L, rhs: R) -> Self::Output {
+        let l_prom = lhs.promote_left();
+        let r_prom = L::promote_right(rhs);
+        l_prom * r_prom
     }
 }
 
@@ -80,11 +87,18 @@ impl<F: Semiring> ReduceKernel<F> for ProductKernel {
 
 #[derive(Debug, Clone, Copy)]
 pub struct SubKernel;
-impl<F: Ring> BinaryKernel<F, F> for SubKernel {
-    type Output = F;
+impl<L, R> BinaryKernel<L, R> for SubKernel
+where
+    L: Promote<R>,
+    L::Output: Ring,
+{
+    type Output = L::Output;
 
-    fn apply(&self, x: F, y: F) -> F {
-        x - y
+    #[inline(always)]
+    fn apply(&self, lhs: L, rhs: R) -> Self::Output {
+        let l_prom = lhs.promote_left();
+        let r_prom = L::promote_right(rhs);
+        l_prom - r_prom
     }
 }
 
