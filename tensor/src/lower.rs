@@ -18,7 +18,7 @@ where
 {
     type Output = B::Storage<F>;
 
-    fn lower(&self, backend: &mut B) -> B::Storage<F> {
+    fn lower(&self, backend: &mut B) -> Self::Output {
         if self.is_dense() {
             self.storage.clone()
         } else {
