@@ -17,10 +17,12 @@ use core::ops::{Add, Div, Mul, Neg, Sub};
 pub struct TradingFloat(f64);
 
 impl TradingFloat {
-    pub const ZERO: Self = TradingFloat(0.0);
-    pub const ONE: Self = TradingFloat(1.0);
-    pub const PI: Self = TradingFloat(std::f64::consts::PI);
-    pub const E: Self = TradingFloat(std::f64::consts::E);
+    pub const ZERO: Self = Self(0.0);
+    pub const ONE: Self = Self(1.0);
+    pub const PI: Self = Self(std::f64::consts::PI);
+    pub const E: Self = Self(std::f64::consts::E);
+    pub const PERCENT: Self = Self(0.01);
+    pub const ONE_HUNDRED: Self = Self(100.0);
 
     /// Helper to create a TradingFloat. Panics on NaN/Inf.
     pub fn new(val: f64) -> Self {
