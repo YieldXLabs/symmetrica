@@ -334,3 +334,19 @@ impl Promote<bool> for TradingFloat {
         }
     }
 }
+
+impl Promote<TradingFloat> for bool {
+    type Output = TradingFloat;
+
+    fn promote_left(self) -> Self::Output {
+        if self {
+            TradingFloat::ONE
+        } else {
+            TradingFloat::ZERO
+        }
+    }
+
+    fn promote_right(rhs: TradingFloat) -> Self::Output {
+        rhs
+    }
+}
