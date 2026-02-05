@@ -210,6 +210,8 @@ impl Backend for GenericBackend {
         let input_slice = input.as_slice();
         let mut acc = kernel.init();
 
+        // TODO: Tree Reduction (Map-Reduce).
+        // Serial reduction is limited by single-core speed.
         for &val in input_slice {
             acc = kernel.step(acc, val);
         }
