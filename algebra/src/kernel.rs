@@ -22,7 +22,7 @@ where
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct ScaleKernel<S> {
+pub struct ScaleKernel<S: Data> {
     pub factor: S,
 }
 impl<In, S> UnaryKernel<In> for ScaleKernel<S>
