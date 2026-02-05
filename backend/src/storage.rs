@@ -74,8 +74,15 @@ impl<F: Data> Drop for RawBuffer<F> {
     }
 }
 
+// TODO: Memory Pooling / Caching Allocator.
+// Allocating/Deallocating large buffers repeatedly (e.g., in a training loop)
+// causes memory fragmentation and high syscall overhead.
+// Implement a `BumpAllocator` or `SlabAllocator` instead of using global heap directly.
 #[derive(Debug, Clone)]
 pub struct UnifiedStorage<F: Data> {
+    // TODO: Copy-on-Write Strategy.
+    // Using `Arc` gives us atomic reference counting.
+    // However, `Arc::make_mut` performs a deep clone if the reference count > 1.
     inner: Arc<RawBuffer<F>>,
 }
 
