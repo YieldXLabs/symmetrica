@@ -125,6 +125,11 @@ impl Add for TradingFloat {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
         let result = self.0 + rhs.0;
+        // TODO: Release Mode Invariant Checking.
+        // `debug_assert!` does nothing in release.
+        // If `result` becomes Infinity here, the struct invariant is broken,
+        // but the code proceeds. Consider if `check_finite` is needed in release too.
+        // Consider strict feature flag
         debug_assert!(
             result.is_finite(),
             "TradingFloat addition overflow: {} + {}",
@@ -187,6 +192,8 @@ impl Neg for TradingFloat {
         TradingFloat(-self.0)
     }
 }
+
+// TODO: Rem (Remainder) implementation.
 
 impl Sum for TradingFloat {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
