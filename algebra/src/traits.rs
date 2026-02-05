@@ -14,8 +14,8 @@ pub trait One: Sized {
 }
 
 // Base trait for any data stored in a Tensor
-pub trait Data: Clone + Copy + PartialEq + Debug + 'static {}
-impl<T: Clone + Copy + PartialEq + Debug + 'static> Data for T {}
+pub trait Data: Clone + Copy + Send + Sync + PartialEq + Debug + 'static {}
+impl<T: Clone + Copy + Send + Sync + PartialEq + Debug + 'static> Data for T {}
 
 // 1. Semiring (Bool, Base Math, Tropical)
 pub trait Semiring:
