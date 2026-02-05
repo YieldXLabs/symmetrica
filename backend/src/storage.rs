@@ -4,6 +4,8 @@ use std::alloc::{Layout, alloc_zeroed, dealloc};
 use std::ptr::NonNull;
 use std::sync::Arc;
 
+// TODO: SIMD Alignment.
+// Standard `Layout::array` uses `align_of::<F>()` (usually 4 or 8 bytes).
 #[derive(Debug)]
 struct RawBuffer<F: Data> {
     ptr: NonNull<F>,
@@ -23,6 +25,10 @@ impl<F: Data> RawBuffer<F> {
         }
         let layout = Layout::array::<F>(n).expect("Allocation too large");
         unsafe {
+            // TODO: Uninitialized Allocation.
+            // `alloc_zeroed` is safe but expensive (memset).
+            // For tensors that will be immediately filled (e.g., via `matmul`),
+            // use `alloc` (uninit) and maybe wrap result in `MaybeUninit<F>`.
             let raw = alloc_zeroed(layout) as *mut F;
             let ptr = NonNull::new(raw).expect("Out of memory");
             Self { ptr, len: n }
@@ -56,6 +62,12 @@ impl<F: Data> Drop for RawBuffer<F> {
         if self.len > 0 {
             let layout = Layout::array::<F>(self.len).unwrap();
             unsafe {
+                // TODO: Run Destructors (`drop_in_place`).
+                // Currently, this only deallocates memory (`free`).
+                // It does NOT call the destructor of `F`.
+                // If `F` is `TradingFloat`, this is fine.
+                // If `F` owns heap memory, this is a leak.
+                // std::ptr::drop_in_place(std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len));
                 dealloc(self.ptr.as_ptr() as *mut u8, layout);
             }
         }
