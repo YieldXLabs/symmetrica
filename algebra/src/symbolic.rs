@@ -43,7 +43,7 @@ impl<const N: usize> Shape for DynRank<N> {
 }
 
 // Logic engine (internal)
-// TODO: Migrate to `generic_const_exprs` 
+// TODO: Migrate to `generic_const_exprs`
 pub struct True;
 pub struct False;
 
@@ -370,6 +370,15 @@ where
 }
 
 // TODO: einsum
+// Implement general tensor contraction.
+// Steps:
+// 1. Identify `SharedAxes` between L and R.
+// 2. Permute L so SharedAxes are at the end.
+// 3. Permute R so SharedAxes are at the beginning.
+// 4. Reshape to (Batch, Contract) and (Contract, Out).
+// 5. MatMul.
+// 6. Reshape to Output.
+
 /// Defines how to contract L and R along Axis
 // pub trait Contract<L: Shape, R: Shape, Axis: Label> {
 //     /// Resulting shape after contraction
@@ -473,7 +482,8 @@ where
 //     }};
 // }
 
-// TODO: Masked - like causal mask
+// TODO: Masked Tensors / Causal Masking
+// For Transformers, we need to distinguish between "Real" data and "Padding".
 // The Type Wrapper: "This axis has a validity mask attached"
 // #[derive(Debug, Clone, Copy)]
 // pub struct Masked<L>(PhantomData<L>);
@@ -539,5 +549,8 @@ macro_rules! Axes {
     };
 }
 
-// TODO: Add #[derive(Label)] macro
-// TODO: Dim<L, N> to combine names with sizes
+// TODO: Const Generic Sizes (Static Tensors).
+// Currently, `Cons<Batch, Nil>` has a name but no size.
+// Ideally: `Cons<Dim<Batch, 32>, Nil>` or `Cons<Batch, Nil>` where `Batch` impls `Size<32>`.
+// This allows for `no_std` tensors without Heap allocation.
+// type Dim<L, const N: usize> = (L, Const<N>);
