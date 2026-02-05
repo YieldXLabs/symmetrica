@@ -6,7 +6,11 @@ use algebra::{
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
 
-// A view over tensor data
+// TODO: Strided View Validation.
+// The current `Base` struct assumes a simple strided layout.
+// Modern tensor libraries often support "Negative Strides" (for flipping axes)
+// and "Zero Strides" (for broadcasting without copying).
+// Ensure `compute_strides` and `is_dense` handle these cases
 #[derive(Debug, Clone)]
 pub struct Base<S, F, const R: usize> {
     pub storage: S,
@@ -102,9 +106,17 @@ where
     }
 }
 
-// TODO: implement toeplitz(), zeros(), ones(), full(), eye(), one_hot(), random()
-// TODO: ones_like, zeros_like, full_like
-// TODO: implement slice over axes
+// TODO: Factory Methods.
+// - `zeros`, `ones`, `full`: Essential for initialization.
+// - `eye` (Identity matrix): Critical for Linear Algebra.
+// - `random`: Needs a seeded RNG backend trait to be deterministic.
+// - `one_hot`: Needed for Classification/ML.
+// - `toeplitz`: Useful for signal processing/convolution matrices.
+// - `linspace`, `arange`: Standard numpy-like constructors.
+// TODO: Slicing (`slice`).
+// Implementing slicing requires a new Expression type `SliceExpr`.
+// It modifies `offset` and `shape` but keeps the underlying storage (zero-copy).
+// Signature: `pub fn slice(self, ranges: &[Range<usize>]) -> Tensor<...>`
 #[derive(Debug, Clone)]
 pub struct Tensor<F, Sh: Shape, E = Host<F, { Sh::RANK }>> {
     pub expr: E,
