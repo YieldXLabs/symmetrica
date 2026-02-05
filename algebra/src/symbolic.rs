@@ -9,6 +9,10 @@ pub struct Nil;
 #[derive(Debug, Clone, Copy)]
 pub struct Cons<H, T>(PhantomData<(H, T)>);
 
+// TODO: Derive Macro.
+// Manually implementing `Label` and `TypeEq` is tedious.
+// Create `#[derive(Label)]` to automatically generate the struct,
+// the Label impl, and the TypeEq negative bounds.
 pub trait Label: 'static + Copy + Clone + Debug + Send + Sync {
     fn name() -> &'static str;
 }
