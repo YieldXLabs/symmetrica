@@ -30,8 +30,13 @@ where
 
     fn lower(&self, backend: &mut B) -> Self::Output {
         if self.is_dense() {
+            // Storage is Arc-wrapped (like in `Host`), this is cheap.
+            // Storage is a `CudaSlice`, this is a Device-to-Device copy (costly) !!!
             self.storage.clone()
         } else {
+            // TODO: Stream/Async Execution.
+            // For GPU backends, this compaction should happen on a specific stream
+            // to allow overlap with compute kernels.
             backend.compact(&self.storage, &self.shape, &self.strides, self.offset)
         }
     }
