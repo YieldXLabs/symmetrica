@@ -145,6 +145,7 @@ impl Backend for GenericBackend {
         let input_slice = input.as_slice();
         let output_slice = output.as_mut_slice();
 
+        // TODO: Parallelism
         for i in 0..input.len() {
             output_slice[i] = kernel.apply(input_slice[i]);
         }
