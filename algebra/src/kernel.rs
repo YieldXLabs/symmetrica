@@ -58,6 +58,9 @@ where
     }
 }
 
+// TODO: DivKernel.
+// Missing implementation for Division. Requires `L::Output: Field` (or Real).
+
 #[derive(Debug, Clone, Copy)]
 pub struct SumKernel;
 impl<In> ReduceKernel<In> for SumKernel
