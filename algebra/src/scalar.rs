@@ -196,6 +196,8 @@ impl Neg for TradingFloat {
 // TODO: Rem (Remainder) implementation.
 
 impl Sum for TradingFloat {
+    // TODO: Kahan Summation / Pairwise Summation.
+    // Naive iteration accumulates floating point error significantly in large trading lists.
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(TradingFloat::ZERO, |acc, x| acc + x)
     }
