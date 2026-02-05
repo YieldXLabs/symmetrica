@@ -167,6 +167,10 @@ impl<F: Data, Sh: Shape, E> Tensor<F, Sh, E> {
         self,
         new_shape: [usize; NEW_R],
     ) -> Tensor<F, DynRank<NEW_R>, ReshapeExpr<E, { Sh::RANK }, NEW_R>> {
+        // TODO: Reshape Safety.
+        // `reshape` must verify that `product(new_shape) == product(current_shape)`.
+        // Currently, this check is deferred to runtime execution, which might panic deeply.
+        // It's better to check here
         Tensor::wrap(ReshapeExpr {
             op: self.expr,
             new_shape,
