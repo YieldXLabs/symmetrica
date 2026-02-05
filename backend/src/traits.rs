@@ -15,7 +15,7 @@ pub trait Backend {
 
     // Memory management
     fn pure<T: Data>(&mut self, data: &[T]) -> Self::Storage<T>;
-
+    // TODO: Async / Non-blocking Transfers.
     fn to_host<T: Data>(&mut self, device_data: &Self::Storage<T>) -> Vec<T>;
 
     fn compact<T: Data>(
