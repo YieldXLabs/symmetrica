@@ -89,6 +89,10 @@ impl PartialOrd for TradingFloat {
 }
 
 impl Ord for TradingFloat {
+    // TODO: Safety in Release Mode.
+    // `debug_assert!` is stripped in release. If a NaN sneaks in (via unchecked math),
+    // `unwrap/expect` here will panic the application in production.
+    // Fallback to a default ordering (e.g., treat NaN as 0.0) to prevent crashes.
     fn cmp(&self, other: &Self) -> Ordering {
         self.0.partial_cmp(&other.0).expect("NaN in TradingFloat")
     }
