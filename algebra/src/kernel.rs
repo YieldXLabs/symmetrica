@@ -191,22 +191,30 @@ where
     }
 }
 
-// TODO: Fusion
-// pub trait FusedKernel<F>: Copy + Clone {
-//     fn execute(&self, x: F, y: Option<F>) -> F;
-// }
-
-// // A chain of two kernels: K2(K1(x))
-// #[derive(Clone, Copy)]
-// pub struct ChainedKernel<K1, K2> {
-//     k1: K1,
-//     k2: K2,
-// }
-
-// impl<F, K1: UnaryKernel<F>, K2: UnaryKernel<F>> FusedKernel<F> for ChainedKernel<K1, K2> {
-//     fn execute(&self, x: F, _: Option<F>) -> F {
+// TODO: Kernel Fusion / Composition.
+// Fusion is critical for memory bandwidth efficiency.
+//
+// 1. Define a `FusedKernel` trait that can compose `Unary + Unary` or `Binary + Unary`.
+// 2. Implement `Compose` struct:
+//
+// pub struct ChainedKernel<K1, K2> { k1: K1, k2: K2 }
+// impl<T, K1, K2> UnaryKernel<T> for ChainedKernel<K1, K2>
+// where K1: UnaryKernel<T>, K2: UnaryKernel<K1::Output> {
+//     fn apply(&self, x: T) -> Self::Output {
 //         self.k2.apply(self.k1.apply(x))
 //     }
 // }
+//
+// 3. Add builder methods to the Tensor struct (e.g., `x.add(y).relu()` should produce one loop).
 
-// TODO: vjp/jvp
+// TODO: JVP (Jacobian-Vector Product) and VJP (Vector-Jacobian Product).
+// For Automatic Differentiation:
+// 1. Each Kernel struct needs an associated method (or trait implementation)
+//    that defines its derivative.
+//
+// pub trait DifferentiableKernel<L, R>: BinaryKernel<L, R> {
+//     fn vjp(&self, lhs: L, rhs: R, grad_out: Self::Output) -> (L, R);
+// }
+//
+// 2. Example for MulKernel:
+//    vjp(lhs, rhs, g) -> (g * rhs, g * lhs)
