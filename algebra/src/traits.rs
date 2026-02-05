@@ -80,11 +80,12 @@ pub trait ReduceKernel<In>: KernelBase {
 
     fn init(&self) -> Self::Acc;
     fn step(&self, acc: Self::Acc, x: In) -> Self::Acc;
+    fn merge(&self, acc1: Self::Acc, acc2: Self::Acc) -> Self::Acc;
     fn finish(&self, acc: Self::Acc) -> Self::Output;
 }
 
 pub trait StreamKernel<In>: KernelBase {
-    type State: Clone;
+    type State: Clone + Debug;
     type Output: Data;
 
     fn init(&self) -> Self::State;

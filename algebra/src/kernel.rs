@@ -78,6 +78,10 @@ where
         acc + x.promote_left()
     }
 
+    fn merge(&self, _acc1: Self::Acc, _acc2: Self::Acc) -> Self::Acc {
+        unimplemented!()
+    }
+
     #[inline(always)]
     fn finish(&self, acc: Self::Acc) -> Self::Output {
         acc
@@ -102,6 +106,10 @@ where
     #[inline(always)]
     fn step(&self, acc: Self::Acc, x: In) -> Self::Acc {
         acc * x.promote_left()
+    }
+
+    fn merge(&self, _acc1: Self::Acc, _acc2: Self::Acc) -> Self::Acc {
+        unimplemented!()
     }
 
     #[inline(always)]
