@@ -43,6 +43,7 @@ impl<const N: usize> Shape for DynRank<N> {
 }
 
 // Logic engine (internal)
+// TODO: Migrate to `generic_const_exprs` 
 pub struct True;
 pub struct False;
 
