@@ -26,6 +26,10 @@ impl Backend for GenericBackend {
     }
 
     fn to_host<T: Data>(&mut self, device_data: &Self::Storage<T>) -> Vec<T> {
+        // TODO: Zero-Copy Optimization.
+        // If `device_data` is the *only* reference to the underlying storage (Arc count == 1),
+        // we should define a method to `try_unwrap` the storage and return the inner `Vec`
+        // without allocating a new one and copying bytes.
         let mut host_vec = Vec::with_capacity(device_data.len());
         let src_slice = device_data.as_slice();
 
