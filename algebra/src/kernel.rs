@@ -158,6 +158,9 @@ where
     fn step(&self, state: &mut F, x: In) -> F {
         let x_prom = x.promote_left();
 
+        // TODO: Operation Count Optimization.
+        // Current: 2 muls, 1 add, 1 sub.
+        // Optimization: `state + alpha * (x - state)` (1 mul, 1 add, 1 sub).
         *state = (self.alpha * x_prom) + ((F::one() - self.alpha) * *state);
         *state
     }
