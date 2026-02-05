@@ -66,6 +66,10 @@ impl Backend for GenericBackend {
                 dst_slice[0] = src_slice[offset];
             }
             1 => {
+                // TODO: Vectorization.
+                // If stride is 1 (contiguous), use `copy_from_slice`.
+                // If stride is > 1, this loop can be auto-vectorized by LLVM,
+                // but explicit SIMD gathers might be faster for large strides.
                 for i in 0..shape[0] {
                     dst_slice[i] = src_slice[offset + i * strides[0]];
                 }
