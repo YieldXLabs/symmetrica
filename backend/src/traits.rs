@@ -60,6 +60,10 @@ pub trait Backend {
     ) -> Self::Storage<K::Output>
     where
         K::Output: Data;
+
+    // TODO: GEMM / Linear Algebra.
+    // `reduce` is generic, but Matrix Multiplication requires specialized tiling/cache algorithms.
+    // A `matmul` or `gemm` function should be part of the Backend trait to hook into BLAS/cuBLAS.
 }
 
 // TODO: Checkpoints
