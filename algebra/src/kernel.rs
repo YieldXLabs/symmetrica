@@ -149,6 +149,9 @@ where
     type Output = F;
 
     fn init(&self) -> F {
+        // TODO: Initialization Bias (Warm-up).
+        // Initializing with Zero causes the EMA to "drag" up from 0 at the start of the stream.
+        // Standard practice is to initialize with the first value of the stream.
         F::zero()
     }
 
