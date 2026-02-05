@@ -64,6 +64,10 @@ pub trait Backend {
     // TODO: GEMM / Linear Algebra.
     // `reduce` is generic, but Matrix Multiplication requires specialized tiling/cache algorithms.
     // A `matmul` or `gemm` function should be part of the Backend trait to hook into BLAS/cuBLAS.
+
+    // TODO: Random Number Generation.
+    // fn random_uniform(&mut self, shape: &[usize], min: f32, max: f32) -> Self::Storage<f32>;
+    // fn random_normal(&mut self, shape: &[usize], mean: f32, std: f32) -> Self::Storage<f32>;
 }
 
 // TODO: Checkpoints
