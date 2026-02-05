@@ -65,6 +65,10 @@ impl Display for TradingFloat {
 }
 
 impl PartialEq for TradingFloat {
+    // TODO: Approximate Equality
+    // While `Eq` must be exact for HashMaps, trading logic often requires `approx_eq`
+    // to handle floating point drift (e.g. 1.00000000001 vs 1.0).
+
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
