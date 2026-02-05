@@ -118,6 +118,9 @@ impl TryFrom<f64> for TradingFloat {
     }
 }
 
+// TODO: Implement `OpAssign` traits (AddAssign, SubAssign, etc.).
+// In-place mutation is critical for performance in simulation loops.
+
 impl Add for TradingFloat {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
