@@ -187,7 +187,11 @@ impl Backend for GenericBackend {
         let input_slice = input.as_slice();
         let output_slice = output.as_mut_slice();
         let mut state = kernel.init();
-
+        // TODO: Serial Bottleneck.
+        // Stream kernels (like EMA/RNN) are inherently serial.
+        // However, if we have a batch of independent streams (e.g., [Batch, Time]),
+        // we should parallelize across the Batch dimension.
+        // Currently, this assumes a flat 1D stream.
         for i in 0..input.len() {
             output_slice[i] = kernel.step(&mut state, input_slice[i]);
         }
