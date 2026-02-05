@@ -78,7 +78,7 @@ impl Backend for GenericBackend {
                 let (h, w) = (shape[0], shape[1]);
                 let (stride_h, stride_w) = (strides[0], strides[1]);
                 let mut dst_idx = 0;
-                
+
                 // TODO: Parallelism.
                 for i in 0..h {
                     let mut src_idx = offset + i * stride_h;
@@ -91,7 +91,14 @@ impl Backend for GenericBackend {
                 }
             }
             _ => {
+                // TODO: Optimization.
+                // This generic path is extremely slow due to the `idx` vector maintenance
+                // inside the hot loop.
+                // 1. Flatten the recursion into a specialized implementation.
+                // 2. Pre-calculate offsets if N is small.
                 let rank = shape.len();
+                // TODO: Optimization
+                // Heap allocation in a hot path
                 let mut idx = vec![0; rank];
 
                 for linear in 0..numel {
