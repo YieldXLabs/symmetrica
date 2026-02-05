@@ -3,6 +3,9 @@ use super::{
     StreamKernel, UnaryKernel, Zero,
 };
 
+// TODO: SIMD / Vectorization Support.
+// Implement a Line trait
+
 #[derive(Debug, Clone, Copy)]
 pub struct AddKernel;
 impl<L, R> BinaryKernel<L, R> for AddKernel
