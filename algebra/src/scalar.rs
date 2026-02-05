@@ -5,6 +5,9 @@ use core::hash::{Hash, Hasher};
 use core::iter::{Product, Sum};
 use core::ops::{Add, Div, Mul, Neg, Sub};
 
+// TODO: ZeroCopy
+// derive `bytemuck::Pod` and `bytemuck::ZeroCopy` to allow casting bytes directly to &[TradingFloat].
+
 /// TradingFloat is a total-order, hashable floating-point scalar.
 /// Invariants:
 /// - NaN and ±Inf are forbidden
