@@ -51,6 +51,10 @@ impl Backend for GenericBackend {
         strides: &[usize],
         offset: usize,
     ) -> Self::Storage<T> {
+        // TODO: Dimension Collapsing.
+        // Before running the loops, we should check if any adjacent dimensions are contiguous.
+        // e.g., if shape=[10, 20] and strides=[20, 1], this is actually 1D contiguous.
+        // Collapsing dimensions reduces the nesting level and improves loop prediction.
         let numel = shape.iter().product::<usize>();
         let mut dst = UnifiedStorage::<T>::alloc(numel);
 
