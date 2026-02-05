@@ -217,11 +217,17 @@ impl<F: Data, const R: usize> Tensor<F, DynRank<R>, Host<F, R>> {
     }
 }
 // Algebraic Ops
-// TODO: Add .matmul() and .scan()
 impl<F: Semiring, Sh: Shape, E> Tensor<F, Sh, E>
 where
     [(); Sh::RANK]: Sized,
 {
+    // TODO: Matrix Multiplication (.matmul / .dot).
+    // This requires `ContractExpr`.
+    // It's the most computationally intensive operation and usually delegates to BLAS/cuBLAS.
+
+    // TODO: Scan (Prefix Sum / CumSum).
+    // `ScanExpr` is needed for `cumsum`, `cumprod`, and RNNs.
+    // It is fundamentally sequential (O(N)) unless parallel prefix sum algorithms are used.
     pub fn scale(self, factor: F) -> Tensor<F, Sh, MapExpr<E, ScaleKernel<F>>> {
         Tensor::wrap(MapExpr {
             op: self.expr,
