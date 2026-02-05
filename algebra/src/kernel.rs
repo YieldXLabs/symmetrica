@@ -76,6 +76,9 @@ where
         Self::Acc::zero()
     }
 
+    // TODO: Numerical Stability.
+    // Naive accumulation results in significant precision loss.
+    // Implement Kahan Summation or Pairwise Summation inside `step` or `Acc`.
     #[inline(always)]
     fn step(&self, acc: Self::Acc, x: In) -> Self::Acc {
         acc + x.promote_left()
