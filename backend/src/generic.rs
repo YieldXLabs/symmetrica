@@ -78,7 +78,8 @@ impl Backend for GenericBackend {
                 let (h, w) = (shape[0], shape[1]);
                 let (stride_h, stride_w) = (strides[0], strides[1]);
                 let mut dst_idx = 0;
-
+                
+                // TODO: Parallelism.
                 for i in 0..h {
                     let mut src_idx = offset + i * stride_h;
 
