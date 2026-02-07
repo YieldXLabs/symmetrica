@@ -3,7 +3,7 @@ use core::cmp::Ordering;
 use core::fmt::{self, Display};
 use core::hash::{Hash, Hasher};
 use core::iter::{Product, Sum};
-use core::ops::{Add, Div, Mul, Neg, Sub};
+use core::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
 // TODO: ZeroCopy
 // derive `bytemuck::Pod` and `bytemuck::ZeroCopy` to allow casting bytes directly to &[TradingFloat].
@@ -193,7 +193,23 @@ impl Neg for TradingFloat {
     }
 }
 
-// TODO: Rem (Remainder) implementation.
+impl Rem for TradingFloat {
+    type Output = Self;
+    fn rem(self, rhs: Self) -> Self::Output {
+        debug_assert!(
+            rhs.0 != 0.0,
+            "TradingFloat invariant violated: modulo by zero"
+        );
+        let result = self.0 % rhs.0;
+        debug_assert!(
+            result.is_finite(),
+            "TradingFloat remainder invalid: {} % {}",
+            self.0,
+            rhs.0
+        );
+        TradingFloat(result)
+    }
+}
 
 impl Sum for TradingFloat {
     // TODO: Kahan Summation / Pairwise Summation.
