@@ -112,3 +112,10 @@ pub struct ScanExpr<Op, F, K> {
 // MatchExpr::new(|expr| matches!(expr, Add(_, Zero) => true));
 // MatchExpr::new(|expr| matches!(expr, Sub(x, x) => true));
 // MatchExpr::new(|expr| matches!(expr, Scale(Add(a,b), k) => Add(Scale(a,k), Scale(b,k))));
+
+// TODO: Symbolic expr
+// #[derive(Debug, Clone)]
+// pub struct SymExpr<F, Sh: Shape> {
+//     pub name: &'static str,
+//     _marker: PhantomData<(F, Sh)>,
+// }
