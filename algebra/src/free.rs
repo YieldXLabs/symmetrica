@@ -6,9 +6,6 @@ pub struct IdentityExpr;
 pub struct ConstExpr<F>(pub F);
 
 #[derive(Debug, Clone)]
-pub struct LoadExpr<F>(pub F);
-
-#[derive(Debug, Clone)]
 pub struct LetExpr<Val, Body> {
     pub value: Val,
     pub body: Body,
