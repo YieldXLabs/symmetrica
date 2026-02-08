@@ -1,6 +1,6 @@
 use super::{Differentiable, Evaluator, GradientTape, LeafAdjoint, Lift, Lower, PackDense};
 use algebra::{
-    BroadcastExpr, BroadcastMap, Data, DynRank, MapExpr, Permutation, Real, ReshapeExpr,
+    BroadcastExpr, BroadcastMap, ConstExpr, Data, DynRank, MapExpr, Permutation, Real, ReshapeExpr,
     ScaleKernel, Semiring, Shape, TransposeExpr,
 };
 use backend::Backend;
@@ -194,28 +194,6 @@ impl<F: Data, Sh: Shape, E> Tensor<F, Sh, E> {
     }
 }
 
-impl<F: Data, const R: usize> Tensor<F, DynRank<R>, Host<F, R>> {
-    pub fn new(data: Vec<F>, shape: [usize; R]) -> Self {
-        debug_assert_eq!(data.len(), shape.iter().product::<usize>());
-        Tensor::wrap(Host::new(Arc::new(data), shape))
-    }
-
-    pub fn from_slice(data: &[F], shape: [usize; R]) -> Self {
-        Self::new(data.to_vec(), shape)
-    }
-
-    pub fn from_expr<L>(input: L) -> Tensor<F, DynRank<R>, L::Output>
-    where
-        L: Lift<F>,
-    {
-        Tensor::wrap(input.lift())
-    }
-
-    pub fn into_named<NewSh: Shape>(self) -> Tensor<F, NewSh, Host<F, R>> {
-        debug_assert_eq!(NewSh::RANK, R, "Rank mismatch");
-        Tensor::wrap(self.expr)
-    }
-}
 // Algebraic Ops
 impl<F: Semiring, Sh: Shape, E> Tensor<F, Sh, E>
 where
@@ -253,58 +231,75 @@ impl<F: Real, Sh: Shape, E> Tensor<F, Sh, E> {
     }
 }
 
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __count {
-    () => (0usize);
-    ($head:expr $(, $tail:expr)*) => (1usize + $crate::__count!($($tail),*));
+impl<F: Data> Tensor<F, DynRank<0>, ConstExpr<F>> {
+    pub fn scalar(value: F) -> Self {
+        Tensor::wrap(ConstExpr(value))
+    }
 }
 
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __flatten_1d {
-    ($vec:ident; $($x:expr),* $(,)?) => {{
-        use ::algebra::TradingFloat;
-        $(
-            $vec.push(TradingFloat::try_from($x).expect("Invalid float"));
-        )*
-    }};
+impl<F: Data, const R: usize> Tensor<F, DynRank<R>, Host<F, R>> {
+    pub fn new(data: Vec<F>, shape: [usize; R]) -> Self {
+        debug_assert_eq!(data.len(), shape.iter().product::<usize>());
+        Tensor::wrap(Host::new(Arc::new(data), shape))
+    }
+
+    pub fn from_slice(data: &[F], shape: [usize; R]) -> Self {
+        Self::new(data.to_vec(), shape)
+    }
+
+    pub fn into_named<NewSh: Shape>(self) -> Tensor<F, NewSh, Host<F, R>> {
+        debug_assert_eq!(NewSh::RANK, R, "Rank mismatch");
+        Tensor::wrap(self.expr)
+    }
 }
 
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __flatten_2d {
-    ($vec:ident; $([$($x:expr),* $(,)?]),* $(,)?) => {{
-        $(
-            $crate::__flatten_1d!($vec; $($x),*);
-        )*
-    }};
+impl<F: Data> From<Vec<F>> for Tensor<F, DynRank<1>, Host<F, 1>> {
+    fn from(vec: Vec<F>) -> Self {
+        Tensor::wrap(<Vec<F> as Lift<F>>::lift(vec))
+    }
+}
+
+impl<F: Data, const N: usize> From<[F; N]> for Tensor<F, DynRank<1>, Host<F, 1>> {
+    fn from(arr: [F; N]) -> Self {
+        Tensor::wrap(<[F; N] as Lift<F>>::lift(arr))
+    }
+}
+
+impl<F: Data, const R: usize, const C: usize> From<[[F; C]; R]>
+    for Tensor<F, DynRank<2>, Host<F, 2>>
+{
+    fn from(arr: [[F; C]; R]) -> Self {
+        Tensor::wrap(<[[F; C]; R] as Lift<F>>::lift(arr))
+    }
 }
 
 #[macro_export]
 macro_rules! tensor {
-    ($($x:expr),+ $(,)?) => {{
+    ($x:expr) => {{
         use ::algebra::TradingFloat;
-        let mut data = Vec::<TradingFloat>::new();
-        $crate::__flatten_1d!(data; $($x),*);
-        let shape = [$crate::__count!($($x),*)];
-        Tensor::new(data, shape)
+        let val = TradingFloat::try_from($x).expect("Invalid float");
+        $crate::Tensor::scalar(val)
     }};
 
-    ([$([$($x:expr),* $(,)?]),+ $(,)?]) => {{
+    ($($x:expr),+ $(,)?) => {{
         use ::algebra::TradingFloat;
-        let mut data = Vec::<TradingFloat>::new();
-        $crate::__flatten_2d!(data; $([$($x),*]),*);
-        let rows = $crate::__count!($([$($x),*]),*);
-        let cols = $crate::__count!($($x),*);
-        let shape = [rows, cols];
-        Tensor::new(data, shape)
+
+        $crate::Tensor::from([
+            $(TradingFloat::try_from($x).expect("Invalid float")),+
+        ])
+    }};
+
+    ($([$($x:expr),* $(,)?]),+ $(,)?) => {{
+        use ::algebra::TradingFloat;
+
+        $crate::Tensor::from([
+            $([$(TradingFloat::try_from($x).expect("Invalid float")),*]),+
+        ])
     }};
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use backend::GenericBackend;
 
     #[test]
