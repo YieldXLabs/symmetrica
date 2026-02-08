@@ -195,13 +195,13 @@ impl<F: Data, Sh: Shape, E> Tensor<F, Sh, E> {
 }
 
 impl<F: Data, const R: usize> Tensor<F, DynRank<R>, Host<F, R>> {
-    pub fn from_vec(data: Vec<F>, shape: [usize; R]) -> Self {
+    pub fn new(data: Vec<F>, shape: [usize; R]) -> Self {
         debug_assert_eq!(data.len(), shape.iter().product::<usize>());
         Tensor::wrap(Host::new(Arc::new(data), shape))
     }
 
     pub fn from_slice(data: &[F], shape: [usize; R]) -> Self {
-        Self::from_vec(data.to_vec(), shape)
+        Self::new(data.to_vec(), shape)
     }
 
     pub fn from_expr<L>(input: L) -> Tensor<F, DynRank<R>, L::Output>
@@ -288,7 +288,7 @@ macro_rules! tensor {
         let mut data = Vec::<TradingFloat>::new();
         $crate::__flatten_1d!(data; $($x),*);
         let shape = [$crate::__count!($($x),*)];
-        Tensor::from_vec(data, shape)
+        Tensor::new(data, shape)
     }};
 
     ([$([$($x:expr),* $(,)?]),+ $(,)?]) => {{
@@ -298,7 +298,7 @@ macro_rules! tensor {
         let rows = $crate::__count!($([$($x),*]),*);
         let cols = $crate::__count!($($x),*);
         let shape = [rows, cols];
-        Tensor::from_vec(data, shape)
+        Tensor::new(data, shape)
     }};
 }
 
