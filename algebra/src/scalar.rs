@@ -3,7 +3,9 @@ use core::cmp::Ordering;
 use core::fmt::{self, Display};
 use core::hash::{Hash, Hasher};
 use core::iter::{Product, Sum};
-use core::ops::{Add, Div, Mul, Neg, Rem, Sub};
+use core::ops::{
+    Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
+};
 
 // TODO: ZeroCopy
 // derive `bytemuck::Pod` and `bytemuck::ZeroCopy` to allow casting bytes directly to &[TradingFloat].
@@ -118,9 +120,6 @@ impl TryFrom<f64> for TradingFloat {
     }
 }
 
-// TODO: Implement `OpAssign` traits (AddAssign, SubAssign, etc.).
-// In-place mutation is critical for performance in simulation loops.
-
 impl Add for TradingFloat {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
@@ -208,6 +207,41 @@ impl Rem for TradingFloat {
             rhs.0
         );
         TradingFloat(result)
+    }
+}
+
+impl AddAssign for TradingFloat {
+    #[inline]
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl SubAssign for TradingFloat {
+    #[inline]
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl MulAssign for TradingFloat {
+    #[inline]
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = *self * rhs;
+    }
+}
+
+impl DivAssign for TradingFloat {
+    #[inline]
+    fn div_assign(&mut self, rhs: Self) {
+        *self = *self / rhs;
+    }
+}
+
+impl RemAssign for TradingFloat {
+    #[inline]
+    fn rem_assign(&mut self, rhs: Self) {
+        *self = *self % rhs;
     }
 }
 
