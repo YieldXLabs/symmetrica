@@ -554,3 +554,10 @@ macro_rules! Axes {
 // Ideally: `Cons<Dim<Batch, 32>, Nil>` or `Cons<Batch, Nil>` where `Batch` impls `Size<32>`.
 // This allows for `no_std` tensors without Heap allocation.
 // type Dim<L, const N: usize> = (L, Const<N>);
+
+// TODO: Axis labels for trading
+// Time
+// Feature
+// Asset
+// Scenario
+// Horizon
