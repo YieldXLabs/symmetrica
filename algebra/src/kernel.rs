@@ -87,8 +87,8 @@ where
         acc + x.promote_left()
     }
 
-    fn merge(&self, _acc1: Self::Acc, _acc2: Self::Acc) -> Self::Acc {
-        unimplemented!()
+    fn merge(&self, acc1: Self::Acc, acc2: Self::Acc) -> Self::Acc {
+        acc1 + acc2
     }
 
     #[inline(always)]
@@ -117,8 +117,8 @@ where
         acc * x.promote_left()
     }
 
-    fn merge(&self, _acc1: Self::Acc, _acc2: Self::Acc) -> Self::Acc {
-        unimplemented!()
+    fn merge(&self, acc1: Self::Acc, acc2: Self::Acc) -> Self::Acc {
+        acc1 * acc2
     }
 
     #[inline(always)]
