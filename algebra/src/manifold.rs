@@ -54,3 +54,40 @@ pub trait Manifold<F: Real> {
 //          + (q.rate - p.rate).powi(2)).sqrt()
 //     }
 // }
+
+// struct PoincareBall<F> {
+//     c: F, // curvature > 0
+// }
+
+// impl<F: Real> Manifold<F> for PoincareBall<F> {
+//     type Point = Vec<F>;
+//     type Tangent = Vec<F>;
+
+//     fn exp_map(&self, p: &Self::Point, v: &Self::Tangent) -> Self::Point {
+//         // simplified: Möbius addition
+//         mobius_add(p, v, self.c)
+//     }
+
+//     fn log_map(&self, p: &Self::Point, q: &Self::Point) -> Self::Tangent {
+//         mobius_add(q, &neg(p), self.c)
+//     }
+
+//     fn dist(&self, p: &Self::Point, q: &Self::Point) -> F {
+//         poincare_distance(p, q, self.c)
+//     }
+
+//     fn project(&self, p: &Self::Point) -> Self::Point {
+//         let norm = l2_norm(p);
+//         let max = F::one() - F::epsilon();
+//         if norm >= max {
+//             p.iter().map(|x| *x * max / norm).collect()
+//         } else {
+//             p.clone()
+//         }
+//     }
+
+//     fn inner(&self, p: &Self::Point, u: &Self::Tangent, v: &Self::Tangent) -> F {
+//         let lambda = F::two() / (F::one() - l2_norm_sq(p));
+//         lambda * lambda * dot(u, v)
+//     }
+// }
