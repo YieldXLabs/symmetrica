@@ -117,6 +117,12 @@ where
 // Implementing slicing requires a new Expression type `SliceExpr`.
 // It modifies `offset` and `shape` but keeps the underlying storage (zero-copy).
 // Signature: `pub fn slice(self, ranges: &[Range<usize>]) -> Tensor<...>`
+// TODO: Like family
+// zeros_like(tensor)      // Copy shape, fill with 0
+// ones_like(tensor)       // Copy shape, fill with 1
+// rand_like(tensor)       // Copy shape, fill with random
+// empty_like(tensor)      // Copy shape, uninitialized
+// full_like(tensor, val)  // Copy shape, fill with value
 #[derive(Debug, Clone)]
 pub struct Tensor<F, Sh: Shape, E = Host<F, { Sh::RANK }>> {
     pub expr: E,
