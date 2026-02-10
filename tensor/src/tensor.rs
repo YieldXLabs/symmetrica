@@ -107,7 +107,7 @@ where
 }
 
 // TODO: Factory Methods.
-// - `zeros`, `ones`, `full`: Essential for initialization.
+// - `ones`, `full`: Essential for initialization.
 // - `eye` (Identity matrix): Critical for Linear Algebra.
 // - `random`: Needs a seeded RNG backend trait to be deterministic.
 // - `one_hot`: Needed for Classification/ML.
@@ -241,6 +241,14 @@ impl<F: Data, const R: usize> Tensor<F, DynRank<R>, Host<F, R>> {
     pub fn new(data: Vec<F>, shape: [usize; R]) -> Self {
         debug_assert_eq!(data.len(), shape.iter().product::<usize>());
         Tensor::wrap(Host::new(Arc::new(data), shape))
+    }
+
+    pub fn zeros(shape: [usize; R]) -> Self
+    where
+        F: Semiring,
+    {
+        let n = shape.iter().product();
+        Self::new(vec![F::zero(); n], shape)
     }
 
     pub fn from_slice(data: &[F], shape: [usize; R]) -> Self {
