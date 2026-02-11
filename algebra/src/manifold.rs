@@ -91,3 +91,4 @@ pub trait Manifold<F: Real> {
 //         lambda * lambda * dot(u, v)
 //     }
 // }
+// TODO: Riemannian SGD
