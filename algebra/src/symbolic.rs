@@ -303,61 +303,98 @@ where
     type Output = <A as Union<B>>::Output;
 }
 
-// Maps indices from Src to Dst
-pub trait BroadcastMap<Dst: Shape> {
-    fn mapping() -> Vec<Option<usize>>;
+pub trait BroadcastMap<Src: Shape>: Shape {
+    fn mapping() -> [Option<usize>; Self::RANK];
 }
 
-impl<Src: Shape> BroadcastMap<Nil> for Src {
-    fn mapping() -> Vec<Option<usize>> {
-        Vec::new()
+impl<Src: Shape> BroadcastMap<Src> for Nil {
+    fn mapping() -> [Option<usize>; 0] {
+        []
     }
 }
 
-impl<Src, Head: Label, Tail: Shape> BroadcastMap<Cons<Head, Tail>> for Src
+impl<const N: usize> BroadcastMap<DynRank<N>> for DynRank<N>
 where
-    Src: Shape + Contains<Head>,
-    Src: BroadcastMap<Tail>,
-    Cons<Head, Tail>: BroadcastEntryFinder<Src, <Src as Contains<Head>>::Result>,
+    [(); Self::RANK]:,
 {
-    fn mapping() -> Vec<Option<usize>> {
+    fn mapping() -> [Option<usize>; Self::RANK] {
+        let mut out = [None; Self::RANK];
+        let mut i = 0;
+
+        while i < Self::RANK {
+            out[i] = Some(i);
+            i += 1;
+        }
+
+        out
+    }
+}
+
+impl<Src, Head, Tail> BroadcastMap<Src> for Cons<Head, Tail>
+where
+    Head: Label,
+    Tail: Shape,
+    Src: Shape + Contains<Head>,
+    Cons<Head, Tail>: BroadcastEntryFinder<Src, <Src as Contains<Head>>::Result>,
+    [(); Cons::<Head, Tail>::RANK]:,
+{
+    fn mapping() -> [Option<usize>; Cons::<Head, Tail>::RANK] {
         <Cons<Head, Tail> as BroadcastEntryFinder<Src, <Src as Contains<Head>>::Result>>::entry()
     }
 }
 
-impl<const N: usize> BroadcastMap<DynRank<N>> for DynRank<N> {
-    fn mapping() -> Vec<Option<usize>> {
-        (0..N).map(|i| Some(i)).collect()
-    }
+pub trait BroadcastEntryFinder<Src, IsPresent>: Shape {
+    fn entry() -> [Option<usize>; Self::RANK];
 }
 
-pub trait BroadcastEntryFinder<Src, ContainsResult> {
-    fn entry() -> Vec<Option<usize>>;
-}
-
-impl<Src, Head, Tail: Shape> BroadcastEntryFinder<Src, True> for Cons<Head, Tail>
+impl<Src, Head, Tail> BroadcastEntryFinder<Src, True> for Cons<Head, Tail>
 where
+    Head: Label,
+    Tail: Shape,
     Src: Shape + IndexOf<Head>,
-    Src: BroadcastMap<Tail>,
-    Head: Label,
+    Tail: BroadcastMap<Src>,
+    [(); Cons::<Head, Tail>::RANK]:,
+    [(); Tail::RANK]:,
 {
-    fn entry() -> Vec<Option<usize>> {
-        let index = <Src as IndexOf<Head>>::INDEX;
-        let mut rest = <Src as BroadcastMap<Tail>>::mapping();
-        rest.insert(0, Some(index));
-        rest
+    fn entry() -> [Option<usize>; Cons::<Head, Tail>::RANK] {
+        let curr_idx = <Src as IndexOf<Head>>::INDEX;
+        let rest = <Tail as BroadcastMap<Src>>::mapping();
+
+        let mut out = [None; Cons::<Head, Tail>::RANK];
+        out[0] = Some(curr_idx);
+
+        let mut i = 0;
+        while i < Tail::RANK {
+            out[i + 1] = rest[i];
+            i += 1;
+        }
+
+        out
     }
 }
 
-impl<Src: Shape, Head, Tail: Shape> BroadcastEntryFinder<Src, False> for Cons<Head, Tail>
+impl<Src, Head, Tail> BroadcastEntryFinder<Src, False> for Cons<Head, Tail>
 where
-    Src: BroadcastMap<Tail>,
     Head: Label,
+    Tail: Shape,
+    Src: Shape + IndexOf<Head>,
+    Tail: BroadcastMap<Src>,
+    [(); Cons::<Head, Tail>::RANK]:,
+    [(); Tail::RANK]:,
 {
-    fn entry() -> Vec<Option<usize>> {
-        let mut rest = <Src as BroadcastMap<Tail>>::mapping();
-        rest.insert(0, None);
-        rest
+    fn entry() -> [Option<usize>; Cons::<Head, Tail>::RANK] {
+        let rest = <Tail as BroadcastMap<Src>>::mapping();
+
+        let mut out = [None; Cons::<Head, Tail>::RANK];
+        out[0] = None;
+
+        let mut i = 0;
+        while i < Tail::RANK {
+            out[i + 1] = rest[i];
+            i += 1;
+        }
+
+        out
     }
 }
 
