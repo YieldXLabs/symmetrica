@@ -163,15 +163,15 @@ impl<F: Data, Sh: Shape, E> Tensor<F, Sh, E> {
     ) -> Tensor<F, Target, BroadcastExpr<E, { Sh::RANK }, { Target::RANK }>>
     where
         Target: Shape + BroadcastMap<Sh>,
+        [(); Sh::RANK]:,
+        [(); Target::RANK]:,
     {
-        let vec_map = <Target as BroadcastMap<Sh>>::mapping();
-        let array_map: [Option<usize>; Target::RANK] =
-            vec_map.try_into().ok().expect("Mapping length mismatch");
+        let mapping = <Target as BroadcastMap<Sh>>::mapping();
 
         Tensor::wrap(BroadcastExpr {
             op: self.expr,
             target_shape: target_sizes,
-            mapping: array_map,
+            mapping,
         })
     }
 
