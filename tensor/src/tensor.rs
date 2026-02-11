@@ -11,6 +11,12 @@ use std::{marker::PhantomData, sync::Arc};
 // Modern tensor libraries often support "Negative Strides" (for flipping axes)
 // and "Zero Strides" (for broadcasting without copying).
 // Ensure `compute_strides` and `is_dense` handle these cases
+// TODO: Layout
+// enum Layout {
+//     C,
+//     F,
+//     Strided,
+// }
 #[derive(Debug, Clone)]
 pub struct Base<S, F, const R: usize> {
     pub storage: S,
