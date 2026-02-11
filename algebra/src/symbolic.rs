@@ -235,28 +235,39 @@ impl<const N: usize> Union<DynRank<N>> for DynRank<N> {
 }
 
 pub trait Permutation<Dst: Shape> {
-    fn indices() -> Vec<usize>;
+    fn indices() -> [usize; Dst::RANK];
 }
 
 impl<Src: Shape> Permutation<Nil> for Src {
-    fn indices() -> Vec<usize> {
-        Vec::new()
+    fn indices() -> [usize; 0] {
+        []
     }
 }
 
-// TODO: Make it faster
 impl<Src, Head, Tail> Permutation<Cons<Head, Tail>> for Src
 where
-    Src: Shape + IndexOf<Head>,
     Head: Label,
     Tail: Shape,
-    Src: Permutation<Tail>,
+    Src: Shape + IndexOf<Head> + Permutation<Tail>,
+    [(); Cons::<Head, Tail>::RANK]:,
+    [(); Tail::RANK]:,
 {
-    fn indices() -> Vec<usize> {
-        let current = <Src as IndexOf<Head>>::INDEX;
-        let mut rest = <Src as Permutation<Tail>>::indices();
-        rest.insert(0, current); // O(N) 
-        rest
+    fn indices() -> [usize; Cons::<Head, Tail>::RANK] {
+        let curr = <Src as IndexOf<Head>>::INDEX;
+        let rest = <Src as Permutation<Tail>>::indices();
+
+        let mut out = [0; Cons::<Head, Tail>::RANK];
+
+        out[0] = curr;
+
+        let mut i = 0;
+
+        while i < <Tail as Shape>::RANK {
+            out[i + 1] = rest[i];
+            i += 1;
+        }
+
+        out
     }
 }
 

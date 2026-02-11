@@ -136,17 +136,17 @@ impl<F: Data, Sh: Shape, E> Tensor<F, Sh, E> {
         }
     }
 
-    pub fn align<NewShape>(self) -> Tensor<F, NewShape, TransposeExpr<E, { Sh::RANK }>>
+    pub fn align<NewShape>(self) -> Tensor<F, NewShape, TransposeExpr<E, { NewShape::RANK }>>
     where
         NewShape: Shape,
         Sh: Permutation<NewShape>,
+        [(); NewShape::RANK]:,
     {
-        let vec_idx = <Sh as Permutation<NewShape>>::indices();
-        let array_idx: [usize; Sh::RANK] = vec_idx.try_into().expect("Rank mismatch");
+        let perm = <Sh as Permutation<NewShape>>::indices();
 
         Tensor::wrap(TransposeExpr {
             op: self.expr,
-            perm: array_idx,
+            perm,
         })
     }
 

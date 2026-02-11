@@ -1,3 +1,4 @@
+#![feature(generic_const_exprs)]
 pub mod free;
 pub mod kernel;
 pub mod linear;
