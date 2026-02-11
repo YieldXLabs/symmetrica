@@ -17,6 +17,7 @@ use std::{marker::PhantomData, sync::Arc};
 //     F,
 //     Strided,
 // }
+// TODO: Implement ::stack
 #[derive(Debug, Clone)]
 pub struct Base<S, F, const R: usize> {
     pub storage: S,
