@@ -377,7 +377,7 @@ impl<Src, Head, Tail> BroadcastEntryFinder<Src, False> for Cons<Head, Tail>
 where
     Head: Label,
     Tail: Shape,
-    Src: Shape + IndexOf<Head>,
+    Src: Shape,
     Tail: BroadcastMap<Src>,
     [(); Cons::<Head, Tail>::RANK]:,
     [(); Tail::RANK]:,
