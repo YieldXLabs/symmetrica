@@ -218,3 +218,14 @@ where
 //
 // 2. Example for MulKernel:
 //    vjp(lhs, rhs, g) -> (g * rhs, g * lhs)
+
+// TODO: McCulloch–Pitts neuron
+// pub struct StepKernel;
+
+// impl<F: Real> Kernel<F> for StepKernel {
+//     type Output = F; // or bool
+
+//     fn apply(x: F) -> F {
+//         if x > F::zero() { F::one() } else { F::zero() }
+//     }
+// }
