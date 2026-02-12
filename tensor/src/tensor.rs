@@ -147,7 +147,6 @@ impl<F: Data, Sh: Shape, E> Tensor<F, Sh, E> {
     where
         NewShape: Shape,
         Sh: Permutation<NewShape>,
-        [(); NewShape::RANK]:,
     {
         let perm = <Sh as Permutation<NewShape>>::indices();
 
@@ -163,8 +162,6 @@ impl<F: Data, Sh: Shape, E> Tensor<F, Sh, E> {
     ) -> Tensor<F, Target, BroadcastExpr<E, { Sh::RANK }, { Target::RANK }>>
     where
         Target: Shape + BroadcastMap<Sh>,
-        [(); Sh::RANK]:,
-        [(); Target::RANK]:,
     {
         let mapping = <Target as BroadcastMap<Sh>>::mapping();
 
