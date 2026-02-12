@@ -1,5 +1,7 @@
 use super::{Base, Evaluator, Lower, PackDense};
-use algebra::{BinaryKernel, Data, MapExpr, ReshapeExpr, TransposeExpr, UnaryKernel, ZipExpr};
+use algebra::{
+    BinaryKernel, Data, MapExpr, ReshapeExpr, SliceExpr, TransposeExpr, UnaryKernel, ZipExpr,
+};
 use backend::Backend;
 
 impl<B, L, R, K, const RANK: usize> Evaluator<B, RANK> for ZipExpr<L, R, K>
@@ -83,5 +85,27 @@ where
             Base::<B::Storage<Self::Data>, Self::Data, R_OUT>::compute_strides(&self.new_shape);
 
         Base::from_parts(dense_view, self.new_shape, new_strides, 0)
+    }
+}
+
+impl<B, E, const R: usize> Evaluator<B, R> for SliceExpr<E, R>
+where
+    B: Backend,
+    E: Evaluator<B, R>,
+{
+    type Data = E::Data;
+
+    fn eval(&self, backend: &mut B) -> Base<B::Storage<E::Data>, E::Data, R> {
+        let mut base = self.op.eval(backend);
+
+        for (i, range) in self.ranges.iter().enumerate() {
+            debug_assert!(range.end <= base.shape[i], "Slice out of bounds");
+
+            base.offset += range.start * base.strides[i];
+
+            base.shape[i] = range.end - range.start;
+        }
+
+        base
     }
 }
