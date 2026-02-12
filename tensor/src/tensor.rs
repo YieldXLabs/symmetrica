@@ -141,6 +141,11 @@ where
 // TODO: Define mutation semantics and aliasing rules.
 // Are tensors immutable?
 // If mutable views are allowed, ensure no unsound aliasing.
+// TODO: Causal Graph
+// struct CausalGraph<F> {
+//     adj: Tensor<F, DynRank<2>>,
+// }
+
 #[derive(Debug, Clone)]
 pub struct Tensor<F, Sh: Shape, E = Host<F, { Sh::RANK }>> {
     pub expr: E,
