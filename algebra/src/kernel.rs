@@ -219,13 +219,23 @@ where
 // 2. Example for MulKernel:
 //    vjp(lhs, rhs, g) -> (g * rhs, g * lhs)
 
-// TODO: McCulloch–Pitts neuron
+// TODO: McCulloch–Pitts neuron (hard step activation)
+// NOTE: Non-differentiable. Use only for inference or
+// provide a straight-through estimator for training.
 // pub struct StepKernel;
 
-// impl<F: Real> Kernel<F> for StepKernel {
-//     type Output = F; // or bool
+// impl<F> Kernel<F> for StepKernel
+// where
+//     F: Real + PartialOrd,
+// {
+//     type Output = F;
 
+//     #[inline]
 //     fn apply(x: F) -> F {
-//         if x > F::zero() { F::one() } else { F::zero() }
+//         if x > F::zero() {
+//             F::one()
+//         } else {
+//             F::zero()
+//         }
 //     }
 // }
