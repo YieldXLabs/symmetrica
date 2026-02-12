@@ -37,9 +37,12 @@ pub struct ReshapeExpr<Op, const R_IN: usize, const R_OUT: usize> {
     pub new_shape: [usize; R_OUT],
 }
 
-// TODO: SliceExpr.
-// `Select` reduces rank (getting a single index).
-// We also need `Slice` to get a range (e.g., `tensor[0..10]`), which preserves rank.
+#[derive(Debug, Clone)]
+pub struct SliceExpr<Op, const R: usize> {
+    pub op: Op,
+    pub ranges: [core::ops::Range<usize>; R],
+}
+
 #[derive(Debug, Clone)]
 pub struct SelectExpr<Op> {
     pub op: Op,
