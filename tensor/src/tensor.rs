@@ -1,7 +1,7 @@
 use super::{Differentiable, Evaluator, GradientTape, LeafAdjoint, Lift, Lower, PackDense};
 use algebra::{
     BroadcastExpr, BroadcastMap, ConstExpr, Data, DynRank, MapExpr, Permutation, Real, ReshapeExpr,
-    ScaleKernel, Semiring, Shape, TransposeExpr,
+    ScaleKernel, Semiring, Shape, SliceExpr, TransposeExpr,
 };
 use backend::Backend;
 use std::{marker::PhantomData, sync::Arc};
@@ -240,6 +240,16 @@ impl<F: Semiring, Sh: Shape, E> Tensor<F, Sh, E> {
         Tensor::wrap(MapExpr {
             op: self.expr,
             kernel: ScaleKernel { factor },
+        })
+    }
+
+    pub fn slice(
+        self,
+        ranges: [core::ops::Range<usize>; Sh::RANK],
+    ) -> Tensor<F, Sh, SliceExpr<E, { Sh::RANK }>> {
+        Tensor::wrap(SliceExpr {
+            op: self.expr,
+            ranges,
         })
     }
 }
