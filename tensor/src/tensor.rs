@@ -129,6 +129,9 @@ where
 // rand_like(tensor)       // Copy shape, fill with random
 // empty_like(tensor)      // Copy shape, uninitialized
 // full_like(tensor, val)  // Copy shape, fill with value
+// TODO: Simplify
+// Algebraic Rewriting (Symbolic Solver)
+// Transpose(Add(A, B)) → Add(Transpose(A), Transpose(B))
 #[derive(Debug, Clone)]
 pub struct Tensor<F, Sh: Shape, E = Host<F, { Sh::RANK }>> {
     pub expr: E,
