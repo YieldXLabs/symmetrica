@@ -228,10 +228,7 @@ impl<F: Data, Sh: Shape, E> Tensor<F, Sh, E> {
 }
 
 // Algebraic Ops
-impl<F: Semiring, Sh: Shape, E> Tensor<F, Sh, E>
-where
-    [(); Sh::RANK]: Sized,
-{
+impl<F: Semiring, Sh: Shape, E> Tensor<F, Sh, E> {
     // TODO: Matrix Multiplication (.matmul / .dot).
     // This requires `ContractExpr`.
     // It's the most computationally intensive operation and usually delegates to BLAS/cuBLAS.
