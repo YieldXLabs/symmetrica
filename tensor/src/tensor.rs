@@ -132,6 +132,10 @@ where
 // TODO: Simplify
 // Algebraic Rewriting (Symbolic Solver)
 // Transpose(Add(A, B)) → Add(Transpose(A), Transpose(B))
+// TODO: The Program Synthesis (HUGE)
+// Search over valid operations, filter by type system, find shape D.
+// The type system prunes invalid programs automatically.
+// Heuristics, Cost models, Depth limits, Possibly reinforcement learning
 #[derive(Debug, Clone)]
 pub struct Tensor<F, Sh: Shape, E = Host<F, { Sh::RANK }>> {
     pub expr: E,
