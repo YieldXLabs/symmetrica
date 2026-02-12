@@ -1,6 +1,5 @@
 use core::fmt::Debug;
 use core::marker::PhantomData;
-use core::usize;
 
 // Core Types
 #[derive(Debug, Clone, Copy)]
