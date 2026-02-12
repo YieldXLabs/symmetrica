@@ -1,7 +1,5 @@
 use super::{Lift, Tensor};
-use algebra::{
-    AddKernel, BroadcastShape, CanBroadcastWith, Semiring, Shape, True, TypeEq, ZipExpr,
-};
+use algebra::{AddKernel, BroadcastMap, BroadcastShape, Semiring, Shape, ZipExpr};
 use std::ops::Add;
 
 // TODO: Auto broadcast
@@ -28,17 +26,14 @@ use std::ops::Add;
 //     }
 //     out
 // }
-
 impl<F, ShL, ShR, EL, ER> Add<Tensor<F, ShR, ER>> for Tensor<F, ShL, EL>
 where
     F: Semiring,
     ShL: Shape,
     ShR: Shape,
-    ShL: CanBroadcastWith<ShR>,
-    <ShL as CanBroadcastWith<ShR>>::Result: TypeEq<True>,
     ShL: BroadcastShape<ShR>,
-    <ShL as BroadcastShape<ShR>>::Output: Shape,
-    [(); <ShL as BroadcastShape<ShR>>::Output::RANK]: Sized,
+    <ShL as BroadcastShape<ShR>>::Output: BroadcastMap<ShL> + BroadcastMap<ShR>,
+    [(); <ShL as BroadcastShape<ShR>>::Output::RANK]:,
 {
     type Output = Tensor<F, <ShL as BroadcastShape<ShR>>::Output, ZipExpr<EL, ER, AddKernel>>;
 

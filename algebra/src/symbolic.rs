@@ -330,6 +330,15 @@ where
     }
 }
 
+impl<const N: usize> BroadcastMap<Nil> for DynRank<N>
+where
+    [(); Self::RANK]:,
+{
+    fn mapping() -> [Option<usize>; Self::RANK] {
+        [None; Self::RANK]
+    }
+}
+
 impl<Src, Head, Tail> BroadcastMap<Src> for Cons<Head, Tail>
 where
     Head: Label,
@@ -397,26 +406,6 @@ where
         out
     }
 }
-
-pub trait CanBroadcastWith<Other: Shape> {
-    type Result: Bool;
-}
-
-impl<A, B> CanBroadcastWith<B> for A
-where
-    A: Shape,
-    B: Shape,
-    A: Union<B>,
-    A: SubsetOf<<A as Union<B>>::Output>,
-    B: SubsetOf<<A as Union<B>>::Output>,
-    <A as SubsetOf<<A as Union<B>>::Output>>::Result:
-        And<<B as SubsetOf<<A as Union<B>>::Output>>::Result>,
-{
-    type Result = <<A as SubsetOf<<A as Union<B>>::Output>>::Result as And<
-        <B as SubsetOf<<A as Union<B>>::Output>>::Result,
-    >>::Result;
-}
-
 // TODO: einsum
 // Implement general tensor contraction.
 // Steps:
