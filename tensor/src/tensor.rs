@@ -136,6 +136,8 @@ where
 // Search over valid operations, filter by type system, find shape D.
 // The type system prunes invalid programs automatically.
 // Heuristics, Cost models, Depth limits, Possibly reinforcement learning
+// TODO: Programmatic factors + differentiable weighting + causal inference
+// mixture-of-experts over structured alphas
 #[derive(Debug, Clone)]
 pub struct Tensor<F, Sh: Shape, E = Host<F, { Sh::RANK }>> {
     pub expr: E,
