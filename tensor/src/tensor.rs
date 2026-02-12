@@ -17,7 +17,6 @@ use std::{marker::PhantomData, sync::Arc};
 //     F,
 //     Strided,
 // }
-// TODO: Implement ::stack
 #[derive(Debug, Clone)]
 pub struct Base<S, F, const R: usize> {
     pub storage: S,
@@ -119,6 +118,7 @@ where
 // - `one_hot`: Needed for Classification/ML.
 // - `toeplitz`: Useful for signal processing/convolution matrices.
 // - `linspace`, `arange`: Standard numpy-like constructors.
+// TODO: Implement ::stack, ::concat, ::split, ::tile, ::repeat, ::flip, ::roll, etc.
 // TODO: Slicing (`slice`).
 // Implementing slicing requires a new Expression type `SliceExpr`.
 // It modifies `offset` and `shape` but keeps the underlying storage (zero-copy).
