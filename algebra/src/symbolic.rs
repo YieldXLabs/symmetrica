@@ -554,12 +554,17 @@ where
 #[macro_export]
 macro_rules! __generate_inequality {
     () => {};
-    ($head:ident, $($tail:ident),*) => {
+    ($single:ident) => {};
+    ($head:ident, $($tail:ident),+) => {
         $(
-            impl $crate::symbolic::TypeEq<$tail> for $head { type Result = $crate::symbolic::False; }
-            impl $crate::symbolic::TypeEq<$head> for $tail { type Result = $crate::symbolic::False; }
+            impl $crate::symbolic::TypeEq<$tail> for $head {
+                type Result = $crate::symbolic::False;
+            }
+            impl $crate::symbolic::TypeEq<$head> for $tail {
+                type Result = $crate::symbolic::False;
+            }
         )*
-        $crate::__generate_inequality!($($tail),*);
+        $crate::__generate_inequality!($($tail),+);
     };
 }
 
@@ -581,7 +586,7 @@ macro_rules! make_labels {
 macro_rules! Axes {
     () => { $crate::symbolic::Nil };
     ($head:ty $(, $tail:ty)* $(,)?) => {
-        $crate::symbolic::Cons<$head, Axes!($($tail),*)>
+        $crate::symbolic::Cons<$head, $crate::Axes!($($tail),*)>
     };
 }
 
@@ -597,3 +602,23 @@ macro_rules! Axes {
 // Asset
 // Scenario
 // Horizon
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    make_labels!(A, B, C);
+
+    #[test]
+    fn test_index_of() {
+        type Sh = Axes!(A, B, C);
+
+        const IDX_A: usize = <Sh as IndexOf<A>>::INDEX;
+        const IDX_B: usize = <Sh as IndexOf<B>>::INDEX;
+        const IDX_C: usize = <Sh as IndexOf<C>>::INDEX;
+
+        assert_eq!(IDX_A, 0);
+        assert_eq!(IDX_B, 1);
+        assert_eq!(IDX_C, 2);
+    }
+}
