@@ -138,6 +138,9 @@ where
 // Heuristics, Cost models, Depth limits, Possibly reinforcement learning
 // TODO: Programmatic factors + differentiable weighting + causal inference
 // mixture-of-experts over structured alphas
+// TODO: Define mutation semantics and aliasing rules.
+// Are tensors immutable?
+// If mutable views are allowed, ensure no unsound aliasing.
 #[derive(Debug, Clone)]
 pub struct Tensor<F, Sh: Shape, E = Host<F, { Sh::RANK }>> {
     pub expr: E,
