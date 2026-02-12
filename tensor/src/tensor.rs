@@ -145,6 +145,13 @@ where
 // struct CausalGraph<F> {
 //     adj: Tensor<F, DynRank<2>>,
 // }
+// Tensor Engine
+//      ↑
+// CausalGraph { adjacency: Tensor }
+//      ↑
+// Symbolic Reasoner (d-sep, ID)
+//      ↑
+// Query Engine (P(Y | do(X)))
 
 #[derive(Debug, Clone)]
 pub struct Tensor<F, Sh: Shape, E = Host<F, { Sh::RANK }>> {
