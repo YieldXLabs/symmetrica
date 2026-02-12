@@ -160,6 +160,17 @@ where
 // - Use type-erased or boxed expressions for deep chains
 // - Use DynRank for runtime-shape tensors
 // - Implement fusion passes to reduce nested expression types
+// TODO: Differentiable Causal Discovery (DCD) is a powerful technique for learning causal graphs from data.
+// Initialize adjacency A (tensor)
+// Loop:
+//     1. Compute structural equations via tensor engine
+//     2. Compute loss(data)
+//     3. Add acyclicity penalty h(A)
+//     4. Backprop
+//     5. Periodically:
+//          - Threshold A
+//          - Run symbolic reasoning
+//          - Add structural penalties if needed
 #[derive(Debug, Clone)]
 pub struct Tensor<F, Sh: Shape, E = Host<F, { Sh::RANK }>> {
     pub expr: E,
