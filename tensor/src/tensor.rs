@@ -152,7 +152,14 @@ where
 // Symbolic Reasoner (d-sep, ID)
 //      ↑
 // Query Engine (P(Y | do(X)))
-
+// TODO: Monomorphization Explosion
+// Currently, every combination of Expression type, Backend, and Shape generates a unique monomorphized struct and impl.
+// This can lead to compile-time bloat and large binaries if many combinations are used.
+// Mitigation strategies:
+// - Limit expression depth before materializing intermediate tensors
+// - Use type-erased or boxed expressions for deep chains
+// - Use DynRank for runtime-shape tensors
+// - Implement fusion passes to reduce nested expression types
 #[derive(Debug, Clone)]
 pub struct Tensor<F, Sh: Shape, E = Host<F, { Sh::RANK }>> {
     pub expr: E,
