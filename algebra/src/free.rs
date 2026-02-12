@@ -61,10 +61,11 @@ pub struct MapExpr<Op, K> {
 }
 
 #[derive(Debug, Clone)]
-pub struct ContractExpr<L, R> {
+pub struct ContractExpr<L, R, const K: usize> {
     pub left: L,
     pub right: R,
-    pub axes: (Vec<usize>, Vec<usize>),
+    pub left_axes: [usize; K],
+    pub right_axes: [usize; K],
 }
 
 // TODO: Windowing / Convolution.
