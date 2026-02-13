@@ -517,39 +517,6 @@ where
 //         tmp.align_to::<OutSh>()
 //     }};
 // }
-
-// TODO: Masked Tensors / Causal Masking
-// For Transformers, we need to distinguish between "Real" data and "Padding".
-// The Type Wrapper: "This axis has a validity mask attached"
-// #[derive(Debug, Clone, Copy)]
-// pub struct Masked<L>(PhantomData<L>);
-
-// // It behaves like a Label
-// impl<L: Label> Label for Masked<L> {
-//     fn name() -> &'static str { "Masked" } // Simplified for static context
-// }
-
-// pub trait Replace<Target: Label, Replacement: Label> {
-//     type Output: Shape;
-// }
-
-// impl<Target, Rep, Tail> Replace<Target, Rep> for Cons<Target, Tail>
-// where
-//     Tail: Shape,
-//     Rep: Label,
-// {
-//     // Found it! Swap Head.
-//     type Output = Cons<Rep, Tail>;
-// }
-
-// impl<Target, Rep, Head, Tail> Replace<Target, Rep> for Cons<Head, Tail>
-// where
-//     Head: Label + TypeEq<Target, Result = False>,
-//     Tail: Replace<Target, Rep>,
-// {
-//     type Output = Cons<Head, <Tail as Replace<Target, Rep>>::Output>;
-// }
-
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __generate_inequality {
