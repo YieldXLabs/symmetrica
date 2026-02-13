@@ -405,118 +405,77 @@ where
         out
     }
 }
-// TODO: einsum
-// Implement general tensor contraction.
-// Steps:
-// 1. Identify `SharedAxes` between L and R.
-// 2. Permute L so SharedAxes are at the end.
-// 3. Permute R so SharedAxes are at the beginning.
-// 4. Reshape to (Batch, Contract) and (Contract, Out).
-// 5. MatMul.
-// 6. Reshape to Output.
 
-/// Defines how to contract L and R along Axis
-// pub trait Contract<L: Shape, R: Shape, Axis: Label> {
-//     /// Resulting shape after contraction
-//     type Output: Shape;
+pub trait ContractIndices<Targets: Shape> {
+    fn indices() -> [usize; Targets::RANK];
+}
 
-//     /// (axis index in L, axis index in R)
-//     const AXES: (usize, usize);
-// }
+impl<Src: Shape> ContractIndices<Nil> for Src {
+    fn indices() -> [usize; 0] {
+        []
+    }
+}
 
-// pub struct DefaultContract;
+impl<Src, Head, Tail> ContractIndices<Cons<Head, Tail>> for Src
+where
+    Head: Label,
+    Tail: Shape,
+    Src: Shape + IndexOf<Head>,
+    Src: ContractIndices<Tail>,
+    [(); Cons::<Head, Tail>::RANK]:,
+    [(); Tail::RANK]:,
+{
+    fn indices() -> [usize; Cons::<Head, Tail>::RANK] {
+        let curr = <Src as IndexOf<Head>>::INDEX;
 
-// impl<L, R, Axis> Contract<L, R, Axis> for DefaultContract
-// where
-//     L: Shape + IndexOf<Axis> + Remove<Axis>,
-//     R: Shape + IndexOf<Axis> + Remove<Axis>,
-//     Axis: Label,
-//     <L as Remove<Axis>>::Remainder: Union<
-//         <R as Remove<Axis>>::Remainder
-//     >,
-// {
-//     type Output =
-//         <<L as Remove<Axis>>::Remainder as Union<
-//             <R as Remove<Axis>>::Remainder
-//         >>::Output;
+        let rest = <Src as ContractIndices<Tail>>::indices();
 
-//     const AXES: (usize, usize) = (
-//         <L as IndexOf<Axis>>::INDEX,
-//         <R as IndexOf<Axis>>::INDEX,
-//     );
-// }
+        let mut out = [0; Cons::<Head, Tail>::RANK];
+        out[0] = curr;
 
-// pub trait SharedAxes<Rhs: Shape> {
-//     type Axes: Shape;
-// }
+        let mut i = 0;
+        while i < Tail::RANK {
+            out[i + 1] = rest[i];
+            i += 1;
+        }
 
-// impl<Rhs: Shape> SharedAxes<Rhs> for Nil {
-//     type Axes = Nil;
-// }
+        out
+    }
+}
 
-// impl<H, T, Rhs> SharedAxes<Rhs> for Cons<H, T>
-// where
-//     H: Label,
-//     Rhs: Contains<H>,
-//     T: SharedAxes<Rhs>,
-//     <Rhs as Contains<H>>::Result: Bool,
-// {
-//     type Axes = IfThenElse<
-//         <Rhs as Contains<H>>::Result,
-//         Cons<H, <T as SharedAxes<Rhs>>::Axes>,
-//         <T as SharedAxes<Rhs>>::Axes,
-//     >;
-// }
+pub trait RemoveAll<Targets: Shape> {
+    type Remainder: Shape;
+}
 
-// pub trait MultiContract<L: Shape, R: Shape, Axes: Shape> {
-//     type Output: Shape;
-// }
+impl<Src: Shape> RemoveAll<Nil> for Src {
+    type Remainder = Src;
+}
 
-// impl<L: Shape, R: Shape> MultiContract<L, R, Nil> for () {
-//     type Output = <L as Union<R>>::Output;
-// }
+impl<Src, Head, Tail> RemoveAll<Cons<Head, Tail>> for Src
+where
+    Head: Label,
+    Tail: Shape,
+    Src: Remove<Head>,
+    <Src as Remove<Head>>::Remainder: RemoveAll<Tail>,
+{
+    type Remainder = <<Src as Remove<Head>>::Remainder as RemoveAll<Tail>>::Remainder;
+}
 
-// impl<L, R, H, T> MultiContract<L, R, Cons<H, T>> for ()
-// where
-//     (): Contract<L, R, H>,
-//     (): MultiContract<
-//         <() as Contract<L, R, H>>::Output,
-//         Nil,
-//         T
-//     >,
-// {
-//     type Output =
-//         <() as MultiContract<
-//             <() as Contract<L, R, H>>::Output,
-//             Nil,
-//             T
-//         >>::Output;
-// }
+pub trait ContractShape<L: Shape, R: Shape, Shared: Shape> {
+    type Output: Shape;
+}
 
-// #[macro_export]
-// macro_rules! einsum {
-//     (
-//         ($($a_axes:ty),+),
-//         ($($b_axes:ty),+)
-//         ->
-//         ($($out_axes:ty),+);
-//         $a:expr, $b:expr
-//     ) => {{
-//         type ASh = Axes![$($a_axes),+];
-//         type BSh = Axes![$($b_axes),+];
-//         type OutSh = Axes![$($out_axes),+];
+impl<L, R, Shared> ContractShape<L, R, Shared> for ()
+where
+    Shared: Shape,
+    L: Shape + RemoveAll<Shared>,
+    R: Shape + RemoveAll<Shared>,
+    <L as RemoveAll<Shared>>::Remainder: Union<<R as RemoveAll<Shared>>::Remainder>,
+{
+    type Output =
+        <<L as RemoveAll<Shared>>::Remainder as Union<<R as RemoveAll<Shared>>::Remainder>>::Output;
+}
 
-//         let a1 = $a.align_to::<ASh>();
-//         let b1 = $b.align_to::<BSh>();
-
-//         // Infer shared axes at type level
-//         type Shared = <ASh as SharedAxes<BSh>>::Axes;
-
-//         let tmp = a1.contract_all::<Shared>(b1);
-
-//         tmp.align_to::<OutSh>()
-//     }};
-// }
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __generate_inequality {
