@@ -171,6 +171,20 @@ where
 //          - Threshold A
 //          - Run symbolic reasoning
 //          - Add structural penalties if needed
+// TODO: Financial & Quantum Primitives
+// 1. Tensor Train (MPS) Compression for Path Signatures
+//    - The signature of a 500-asset universe explodes (500^3 elements).
+//    - Implement TT-SVD or TT-Cross approximation to compress high-rank signatures.
+//    - Requires: Linear Algebra Traits (SVD, QR, Eigendecomposition).
+//    - Goal: Linear scaling with dimension (O(d*k)) instead of exponential (O(d^k)).
+// 2. Quantum Amplitude Estimation (QAE)
+//    - Quadratic speedup over Classical Monte Carlo for Derivative Pricing.
+//    - Requires: `Complex<F>` support in `Data` trait.
+//    - Requires: Gate abstractions (Hadamard, Phase Oracle) over the Tensor backend.
+//    - Use Case: Faster CVA/XVA calculations and Risk Management.
+// 3. Clifford Algebra / Geometric Algebra
+//    - Useful for certain advanced hedging strategies and defining the "Log-Signature".
+
 #[derive(Debug, Clone)]
 pub struct Tensor<F, Sh: Shape, E = Host<F, { Sh::RANK }>> {
     pub expr: E,
