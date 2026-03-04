@@ -54,7 +54,7 @@ any code:
    cargo test --workspace        # confirm all tests pass before you touch anything
    ```
 
-3. **Read the three crate READMEs** (`algebra/`, `tensor/`, `backend/`) to
+3. **Read the crate READMEs** (`algebra/`, `tensor/`, `backend/`) to
    understand what is already implemented and what is in progress.
 
 4. **Find an open Issue tagged `good-first-issue`** before inventing new work.
@@ -74,20 +74,39 @@ is WIP and diverges from any prior snapshot an agent may have seen.
 ```
 symmetrica/
 ├── algebra/    # Abstract algebraic traits and laws
-├── tensor/     # Type-level tensors + shape encoding
-└── backend/    # Concrete execution (CPU, future GPU/WASM)
+├── tensor/     # Tensor<T, B: Backend> — parameterised over the trait, not any impl
+└── backend/    # trait Backend (abstract interface) + concrete impls (CpuBackend, ...)
 ```
 
-## Strict Dependency Rule
+## Dependency Graph
 
 ```
-backend  →  tensor  →  algebra
+            backend/ (trait Backend)
+            /                      \
+      (impls)                    (uses)
+     /                                \
+backend/ (CpuBackend, ...)        tensor/ (Tensor<T, B: Backend>)
 ```
+
+`backend/` has two internally distinct layers (see §11):
+- **Layer 1** — `pub trait Backend` (abstract, no `unsafe`, no BLAS)
+- **Layer 2** — `pub struct CpuBackend`, future `CudaBackend`, etc. (concrete impls)
+
+`tensor/` depends on `backend/` for the `Backend` trait only. It must never
+name a concrete impl type. Concrete backends are injected by callers at the use
+site — `tensor/` is permanently unaware of which impl is active.
+
+## Strict Dependency Rules
 
 **Forbidden — reject any PR that introduces:**
 - `algebra/` importing from `tensor/` or `backend/`
-- `tensor/` importing from `backend/`
+- `tensor/` naming any concrete backend type (`CpuBackend`, `CudaBackend`, etc.)
+- `tensor/` importing anything from `backend/`'s Layer 2 modules
 - Any cyclic dependency
+
+**Permitted and required:**
+- `backend/` importing from `algebra/`
+- `tensor/` importing the `Backend` trait from `backend/`
 
 This DAG is the entire abstraction guarantee. One violation unravels it.
 
@@ -101,7 +120,7 @@ This DAG is the entire abstraction guarantee. One violation unravels it.
 |---|---|---|
 | `algebra/` trait hierarchy | 🔄 Active | Ring, Field, VectorSpace, Module |
 | `tensor/` core types | 🔄 Active | Const-generic rank, owned + view |
-| `backend/` CPU | 🔄 Active | BLAS bindings, basic kernels |
+| `backend/` CPU impl | 🔄 Active | BLAS bindings, basic kernels |
 | Forward mode autodiff (JVP) | 🔄 Active | Dual number encoding |
 | Reverse mode autodiff (VJP) | 🔄 Active | Structural pullbacks |
 
@@ -183,7 +202,7 @@ Rank MUST be encoded in const generics. Dynamic rank is prohibited in core
 tensor types.
 
 ```rust
-// CORRECT — rank is a compile-time fact
+// CORRECT — rank is a compile-time fact; B: Backend is the abstract trait from backend/
 struct Tensor<T, const RANK: usize, B: Backend> {
     data:  B::Storage<T>,
     shape: [usize; RANK],
@@ -195,6 +214,10 @@ struct Tensor<T, B: Backend> {
     shape: Vec<usize>,
 }
 ```
+
+`Backend` here is the abstract trait defined in `backend/`. `B` is never
+`CpuBackend`, `CudaBackend`, or any other concrete type. Those are injected
+by callers; `tensor/` is permanently unaware of which impl is used.
 
 ## 6.3 `adt_const_params` — Layout as a Type (nightly, 2026 target)
 
@@ -589,33 +612,48 @@ gradient checkpointing. Document this in every gradient-producing function.
 
 ## `algebra/`
 
-- Pure trait definitions and their algebraic laws
+- Pure trait definitions and their algebraic laws — `Ring`, `Field`, `VectorSpace`, `Module`, `Differentiable`, etc.
+- **Zero workspace dependencies** — `algebra/` is the root; nothing in this workspace imports into it
 - No concrete types, no allocations, no I/O, no RNG
 - Every trait must document: algebraic structure, laws, and a reference
 - New traits require `proptest` property tests verifying the laws
 - **Autodiff composability:** every operation trait must have either a
   `Differentiable` impl or a `// NON-DIFFERENTIABLE: <reason>` annotation
-- **Forbidden:** `std::collections`, `Box`, `Vec`, `Arc`, any randomness source
+- **Forbidden:** `std::collections`, `Box`, `Vec`, `Arc`, any randomness source,
+  any import from `tensor/` or `backend/`
 
 ## `tensor/`
 
-- Tensor types parameterized over `algebra` and `backend` traits only
+- Defines `Tensor<T, const RANK: usize, B: Backend>` — parameterised over the
+  **abstract `Backend` trait**, never over a concrete impl type
+- Depends on `algebra/` and `backend/` (for the trait only)
+- `B: Backend` is always a trait bound; concrete types (`CpuBackend`, etc.) are
+  injected by callers and must never be named inside `tensor/`
 - Shape arithmetic verified at compile time where RANK is statically known
-- `Backend` is always a trait bound, never a concrete type
 - Contraction, transpose, and broadcast operations preserve algebraic structure
 - Memory layout is part of the type contract (§6.7)
 - `Tensor<T, N>` vs `TensorView<'a, T, N>` ownership distinction is enforced (§10.1)
 
 ## `backend/`
 
-- The ONLY crate that may import concrete execution dependencies
-- All implementations gated behind Cargo features — never unconditionally compiled
-- Unsafe code permitted here only; every block requires `// SAFETY:` (see §12)
-- `tensor/` defines *what* to compute; `backend/` defines *how*
-- Kernel-selection logic must never leak upward into `tensor/`
-- `Backend::alloc` must document alignment (32-byte for AVX2, 64-byte for AVX-512)
-- Alignment violations in SIMD are UB — they are not caught by tests
+`backend/` has two internally distinct layers. Keep them clean:
+
+**Layer 1 — Abstract interface** (`backend/src/lib.rs` or `backend/src/trait.rs`):
+- Defines `pub trait Backend` — the sole contract between `tensor/` and execution
+- Depends on `algebra/` only at this layer
+- No concrete structs, no SIMD, no BLAS calls, no `unsafe`
+- Adding a method to `trait Backend` is a breaking change for all impls —
+  requires a design Issue before any modification
+
+**Layer 2 — Concrete implementations** (`backend/src/cpu/`, `backend/src/gpu/`):
+- `struct CpuBackend` — current CPU/BLAS implementation
+- Future: `struct CudaBackend`, `struct WasmBackend`, etc.
+- The ONLY location where `unsafe`, SIMD, and BLAS bindings are permitted
+- All kernels gated behind Cargo features — never unconditionally compiled
+- `alloc` implementations must document alignment (32-byte for AVX2, 64-byte for AVX-512)
+- Alignment violations in SIMD are UB — tests will not catch them
 - Reductions must support deterministic mode with stable parallel reduction order
+- GPU/WASM impls are out of scope — do not add without a tracked design Issue (see §4)
 
 ---
 
@@ -637,7 +675,8 @@ Rules:
 3. Never use `unsafe` to work around a design problem — fix the design
 4. Raw pointers in `tensor/` must be wrapped in safe abstractions before
    crossing module boundaries
-5. `unsafe` in `algebra/` requires a prior design discussion
+5. `unsafe` in `algebra/` or `tensor/` requires a prior design discussion;
+   `unsafe` in `backend/` is permitted only in Layer 2 (concrete impls), never in the trait definition
 
 ---
 
@@ -722,10 +761,10 @@ pub trait CommutativeRing: Ring { ... }
 | `adt_const_params` | RFC in progress, 2026 target | `tensor/` | In use — see §6.3 |
 | `min_generic_const_args` | Full prototype merged | `tensor/` | In use — annotate `// MGCA:` |
 | `gen` keyword | Reserved in 2024 | all | Never use as identifier |
-| Polonius borrow checker | Nightly | `backend/` | Needed for some view lifetimes |
+| Polonius borrow checker | Nightly | `tensor/` | Needed for some view lifetimes |
 | `std::autodiff` / Enzyme | Nightly | — | **DO NOT USE** — see below |
 | New trait solver | Rolling out | `algebra/` | Fixes coherence edge cases |
-| `std::offload` (GPU) | Experimental nightly | Future `backend/` | Watch; do not adopt yet |
+| `std::offload` (GPU) | Experimental nightly | Future `backend/` GPU layer | Watch; do not adopt yet |
 
 When a feature stabilizes: remove its `#![feature(...)]` gate, update this
 table. Do not adopt features not listed here without a design discussion first.
@@ -770,7 +809,7 @@ cargo doc --workspace --no-deps
 ```
 
 **Correctness**
-- [ ] No crate DAG violation (`algebra ← tensor ← backend`)
+- [ ] No crate DAG violation — `algebra/` has zero workspace deps; `tensor/` depends on `algebra/` + `backend/` (trait only, never concrete types); `backend/` depends on `algebra/`
 - [ ] No new `dyn Trait` in `algebra/` or `tensor/`
 - [ ] All `unsafe` blocks have `// SAFETY:` comments
 - [ ] No in-place operations in `algebra/` or on autodiff-participating tensors
@@ -878,6 +917,11 @@ Differentiation is algebraic.
 Boundaries are inviolable.
 
 ---
+
+*Last reviewed: 2026-03 — Principal Project Manager / Senior Principal DL Researcher / Principal Architect*  
+*Format: AGENTS.md — open standard stewarded by the Agentic AI Foundation / Linux Foundation*  
+*Next scheduled review: when any §16 item is reconsidered, or at next major milestone*
+
 # Appendix A: Machine-Readable Rule Index
 
 > For AI agents and automated tooling. Each rule carries a **priority label**
@@ -899,7 +943,7 @@ Boundaries are inviolable.
 
 | ID | Priority | Rule | Automation | Caveat |
 |---|---|---|---|---|
-| `R-001` | **P0** | No crate DAG violation | ✅ grep `use tensor::\|use backend::` scoped per crate | Path-based imports escape — see §A.4 |
+| `R-001` | **P0** | No crate DAG violation | ✅ grep scoped per crate (see §A.4) | `tensor/` may import `Backend` trait from `backend/` — correct. Must never name a concrete impl type. |
 | `R-002` | **P1** | No runtime autodiff tape | ⚠️ grep `Vec<Box<dyn` (partial) | Renamed types evade — human must verify new struct definitions |
 | `R-003` | **P0** | Unsafe requires `// SAFETY:` | ✅ `clippy::undocumented_unsafe_blocks` | Do NOT replace with grep — clippy handles look-behind |
 | `R-004` | **P1** | Stop-gradient must be structural | 🔴 Manual only | "gradient context" not machine-detectable |
@@ -939,13 +983,18 @@ echo "P0: auto-block | P1: human-review block | P2: advisory flag"
 echo ""
 
 # ── P0: R-001 — Crate DAG ─────────────────────────────────────────────────
-# Caveat: path-based imports (tensor::Foo) and extern crate not caught (§A.4)
+# algebra/: zero workspace deps
+# tensor/: depends on algebra/ and backend/ (trait only — never concrete types)
+# backend/: depends on algebra/; Layer 2 impls depend on Layer 1 trait in same crate
+# Caveat: naming concrete types (CpuBackend) in tensor/ without an import; Cargo.toml aliasing
+
 if grep -rn "^use tensor::\|^use backend::" algebra/src/ 2>/dev/null; then
-    echo "❌ P0 / R-001: algebra/ imports tensor/ or backend/"
+    echo "❌ P0 / R-001: algebra/ imports tensor/ or backend/ — forbidden"
     FAILED=1
 fi
-if grep -rn "^use backend::" tensor/src/ 2>/dev/null; then
-    echo "❌ P0 / R-001: tensor/ imports backend/"
+if grep -rn "CpuBackend\|CudaBackend\|WasmBackend" tensor/src/ 2>/dev/null; then
+    echo "❌ P0 / R-001: tensor/ names a concrete backend type — forbidden"
+    echo "   tensor/ must only use B: Backend trait bounds, never concrete structs"
     FAILED=1
 fi
 
@@ -1017,8 +1066,9 @@ Automation has limits. These gaps must be compensated by human PR review:
 
 | Rule | Gap | What Escapes | Human Mitigation |
 |---|---|---|---|
-| `R-001` | Path-based imports | `tensor::Foo::new()` without `use tensor::` | Audit Cargo.toml `[dependencies]` for each crate |
-| `R-001` | Aliased imports | `use t = tensor; t::Foo` | Same Cargo.toml audit |
+| `R-001` | Concrete type in `tensor/` | `CpuBackend` named anywhere in `tensor/src/` | `grep -rn "CpuBackend\|CudaBackend" tensor/src/` — any hit is a violation |
+| `R-001` | Aliased backend import | `use b = backend; b::CpuBackend` in `tensor/src/` | `tensor/` may depend on `backend/` for the trait; verify no concrete structs are used |
+| `R-001` | Any workspace import in `algebra/` | `tensor::` or `backend::` in `algebra/src/` | Audit `algebra/Cargo.toml` — must list no symmetrica workspace crates |
 | `R-002` | Renamed types | `struct Graph { ops: Vec<Box<dyn Backward>> }` | Review all new `struct` definitions in `algebra/`/`tensor/` |
 | `R-007` | Method-only RNG | `thread_rng().gen::<f64>()` without `use rand::` | Flag any call containing `rng`, `random`, `gen` in `algebra/`/`tensor/` |
 | `R-012` | False positives | `explanation`, `expect`, `export` contain `exp` | Script uses `\bexp\(` word-boundary — review flagged lines |
