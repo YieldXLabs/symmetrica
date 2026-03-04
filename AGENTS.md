@@ -4,6 +4,14 @@
 > Read completely before modifying any code.  
 > If this document conflicts with generic Rust advice, **this document prevails**.
 
+| Field | Value |
+|---|---|
+| **Project status** | 🚧 WIP — no stable public API |
+| **Owner** | YieldXLabs |
+| **AGENTS.md version** | 2026-03 |
+| **Review cadence** | Update this file whenever architecture decisions change. Stale guidance causes more damage than no guidance. |
+| **Escalation path** | Open a GitHub Issue tagged `architecture` before any change that touches §16 (Prohibited List) or the §3 dependency DAG. Do not proceed unilaterally. |
+
 ---
 
 # 1. Project Identity
@@ -28,7 +36,40 @@ look more like PyTorch, it is the wrong change.
 
 ---
 
-# 2. Workspace Architecture
+# 2. Contributor Onboarding
+
+**Estimated time to first meaningful PR: 2–3 days.**
+
+If you are new to this codebase, complete these steps in order before writing
+any code:
+
+1. **Read this file completely.** Not skimming — reading. The prohibited list
+   in §16 and the autodiff doctrine in §7 will save you from the most common
+   wrong turns.
+
+2. **Build and run the test suite:**
+   ```bash
+   rustup show                   # confirm pinned toolchain is active
+   cargo build --workspace       # confirm clean build
+   cargo test --workspace        # confirm all tests pass before you touch anything
+   ```
+
+3. **Read the three crate READMEs** (`algebra/`, `tensor/`, `backend/`) to
+   understand what is already implemented and what is in progress.
+
+4. **Find an open Issue tagged `good-first-issue`** before inventing new work.
+   Do not add features that are not tracked in the issue tracker.
+
+5. **Open a Draft PR early.** Don't work in isolation for more than a day.
+   Draft PRs allow async feedback before significant time is invested.
+
+**For AI agents specifically:** steps 3 and 4 require reading files in the
+repository. Use the file tree, not assumptions from training data. The codebase
+is WIP and diverges from any prior snapshot an agent may have seen.
+
+---
+
+# 3. Workspace Architecture
 
 ```
 symmetrica/
@@ -52,13 +93,50 @@ This DAG is the entire abstraction guarantee. One violation unravels it.
 
 ---
 
-# 3. Rust Edition & Nightly Policy
+# 4. Project Scope and Current Status
+
+## What is in scope now (WIP)
+
+| Area | Status | Notes |
+|---|---|---|
+| `algebra/` trait hierarchy | 🔄 Active | Ring, Field, VectorSpace, Module |
+| `tensor/` core types | 🔄 Active | Const-generic rank, owned + view |
+| `backend/` CPU | 🔄 Active | BLAS bindings, basic kernels |
+| Forward mode autodiff (JVP) | 🔄 Active | Dual number encoding |
+| Reverse mode autodiff (VJP) | 🔄 Active | Structural pullbacks |
+
+## What is explicitly out of scope until further notice
+
+These items do not have open issues and should not be started without a
+formal decision recorded in the issue tracker:
+
+- GPU backend (CUDA, Vulkan, Metal, `std::offload`)
+- Python bindings (PyO3)
+- Higher-level training APIs (optimizers, loss functions, data loaders)
+- Model serialization / checkpoint format
+- Distributed execution
+- WASM backend
+
+If you believe one of these should be started, open an Issue for discussion
+first. Do not begin implementation speculatively.
+
+## Decision log
+
+Significant architectural decisions that are not self-evident from the code
+should be recorded as GitHub Issues tagged `decision-record` and linked here.
+Agents and new contributors must read open decision-record issues before
+making changes to `algebra/` public traits, as in-flight decisions may affect
+what is acceptable.
+
+---
+
+# 5. Rust Edition & Nightly Policy
 
 Symmetrica targets **Rust 2024 edition** (stable since 1.85). Nightly features
 are permitted only when explicitly justified, tracked for stabilization, and
-listed in §13.
+listed in §15.
 
-## 3.1 Breaking Changes in Effect (Rust 2024)
+## 5.1 Breaking Changes in Effect (Rust 2024)
 
 **`unsafe extern` is mandatory.** All FFI now requires:
 ```rust
@@ -89,9 +167,9 @@ dispatch, never rely on the old implicit drop order.
 
 ---
 
-# 4. Type System Doctrine
+# 6. Type System Doctrine
 
-## 4.1 Invariants Belong in Types
+## 6.1 Invariants Belong in Types
 
 Before adding any runtime check, ask: *"Can the compiler reject this instead?"*
 
@@ -99,7 +177,7 @@ Runtime shape assertions are design failures unless truly unavoidable. If you
 find yourself writing `assert!(tensor.is_contiguous())`, the type system has
 failed to enforce a contract it should own.
 
-## 4.2 Tensor Rank Encoding
+## 6.2 Tensor Rank Encoding
 
 Rank MUST be encoded in const generics. Dynamic rank is prohibited in core
 tensor types.
@@ -118,7 +196,7 @@ struct Tensor<T, B: Backend> {
 }
 ```
 
-## 4.3 `adt_const_params` — Layout as a Type (nightly, 2026 target)
+## 6.3 `adt_const_params` — Layout as a Type (nightly, 2026 target)
 
 Use `feature(adt_const_params)` to make layout a type-level invariant:
 
@@ -135,7 +213,7 @@ struct Matrix<T, const L: Layout> { ... }
 Do NOT apply to types with privacy-sensitive or unsafe interior state. The RFC
 governing permitted ADTs is still being finalized.
 
-## 4.4 `min_generic_const_args` (nightly, prototype)
+## 6.4 `min_generic_const_args` (nightly, prototype)
 
 Use only where it eliminates a meaningful type-level workaround. Every use
 must carry a `// MGCA: <reason>` comment:
@@ -145,7 +223,7 @@ trait HasRank { const RANK: usize; }
 struct Dense<T: HasRank> where [(); T::RANK]: { ... }
 ```
 
-## 4.5 Phantom Types for Algebraic Structure
+## 6.5 Phantom Types for Algebraic Structure
 
 Encode algebraic laws in types — never validate them at runtime:
 
@@ -163,14 +241,14 @@ struct Gradient<V: VectorSpace> {
 }
 ```
 
-## 4.6 Broadcasting Policy
+## 6.6 Broadcasting Policy
 
 **Implicit broadcasting is prohibited.** NumPy/PyTorch-style silent shape
 expansion is a frequent source of research bugs that are invisible in small
 tests. All broadcasting must be an explicit `broadcast_to` morphism visible
 in the type signature.
 
-## 4.7 Memory Layout Is Part of the Type
+## 6.7 Memory Layout Is Part of the Type
 
 Contiguous row-major, contiguous column-major, and strided views are distinct
 types. Silent layout coercion is never allowed.
@@ -179,7 +257,7 @@ types. Silent layout coercion is never allowed.
 - `TensorView<'a, T, N>` — borrowed, layout preserved from source
 - Never copy data to resolve a lifetime conflict — fix the lifetime
 
-## 4.8 No `dyn Trait` in Hot Paths
+## 6.8 No `dyn Trait` in Hot Paths
 
 `dyn Trait` is allowed only:
 - At crate boundaries for error types
@@ -188,7 +266,7 @@ types. Silent layout coercion is never allowed.
 Never use `Box<dyn Trait>` in `algebra/` or `tensor/`. Monomorphization is
 the strategy — code size is a secondary concern.
 
-## 4.9 Compile-Time Explosion Governance
+## 6.9 Compile-Time Explosion Governance
 
 Unconstrained generics compound compile times aggressively. To prevent this:
 - Blanket impls over unconstrained generics are prohibited
@@ -200,9 +278,9 @@ Unconstrained generics compound compile times aggressively. To prevent this:
 
 ---
 
-# 5. Structural Autodiff Doctrine
+# 7. Structural Autodiff Doctrine
 
-## 5.1 Runtime Tape Is Forbidden
+## 7.1 Runtime Tape Is Forbidden
 
 The following are categorically prohibited — no exceptions:
 
@@ -217,7 +295,7 @@ Autodiff must be structural and type-driven. If the gradient of an operation
 cannot be expressed as a type-level morphism, the algebraic structure is
 incomplete — fix the algebra, not the grad system.
 
-## 5.2 Forward Mode — Dual Numbers as Types
+## 7.2 Forward Mode — Dual Numbers as Types
 
 Forward mode (JVP) is implemented via dual numbers encoded structurally.
 The nilpotent rule ε² = 0 must hold by construction, not by convention:
@@ -241,7 +319,7 @@ impl<T: Ring> Mul for Dual<T> {
 }
 ```
 
-## 5.3 Reverse Mode — Structural Pullbacks
+## 7.3 Reverse Mode — Structural Pullbacks
 
 Reverse mode (VJP) is more efficient when `outputs ≪ inputs` (typical DL).
 The correct encoding uses a **Pullback** type — not a tape, not heap allocation:
@@ -260,7 +338,7 @@ trait Differentiable {
 }
 ```
 
-## 5.4 Higher-Order Derivatives — HVPs, Never Full Hessians
+## 7.4 Higher-Order Derivatives — HVPs, Never Full Hessians
 
 Full Hessian matrices (`n×n`) must NOT be constructed by default. They are
 O(n²) in memory and almost never required. All curvature-aware algorithms
@@ -289,7 +367,7 @@ type HyperDual<T> = Dual<Dual<T>>;
 If you find yourself building an `n×n` matrix to represent curvature: stop,
 and implement the HVP directly.
 
-## 5.5 Stop-Gradient — Structural, Not Numerical
+## 7.5 Stop-Gradient — Structural, Not Numerical
 
 Stop-gradient boundaries MUST be type-level wrappers. Zeroing a gradient
 numerically (`* 0.0`) is forbidden — the multiplication is still in the
@@ -311,7 +389,7 @@ let loss = (pred - target * 0.0).norm();
 Required for: target networks (RL), EMA parameters, normalization statistics,
 discrete latents (VQ-VAE), any value that must not receive gradient updates.
 
-## 5.6 Non-Smooth Operations
+## 7.6 Non-Smooth Operations
 
 `ReLU`, `abs`, `sign`, `max`, `min` are not differentiable at kink points.
 
@@ -331,7 +409,7 @@ impl Differentiable for Relu {
 }
 ```
 
-## 5.7 Gradient Checkpointing — Structural Recompute Boundaries
+## 7.7 Gradient Checkpointing — Structural Recompute Boundaries
 
 For deep differentiable chains (transformers, long sequences), naive reverse
 mode stores all intermediate activations at O(depth) memory. Checkpointing
@@ -352,12 +430,12 @@ mathematical contract of the morphism and must be explicit in the type.
 
 ---
 
-# 6. Numerical Stability — Non-Negotiable
+# 8. Numerical Stability — Non-Negotiable
 
 These rules exist because numerical errors in gradient-based research are
 invisible in unit tests and catastrophic in multi-day training runs.
 
-## 6.1 Floating-Point Is Not a Field
+## 8.1 Floating-Point Is Not a Field
 
 `f32` and `f64` do NOT satisfy the algebraic laws of a mathematical field:
 
@@ -369,7 +447,7 @@ When implementing `Field` or `Ring` for floating-point types, the doc comment
 **must** state which laws hold approximately, to what tolerance, and under
 what conditions they fail. Do not silently implement a field trait for `f32`.
 
-## 6.2 No Silent NaN
+## 8.2 No Silent NaN
 
 If an operation can produce NaN, either encode invalid inputs in the type
 system (making them unrepresentable) or return `Result`/`Option`.
@@ -388,7 +466,7 @@ A single NaN in a gradient poisons the entire parameter update with no
 runtime indication. Every potentially NaN-producing operation must be tested
 at its boundary values.
 
-## 6.3 Stability Annotations Required
+## 8.3 Stability Annotations Required
 
 Operations prone to overflow, catastrophic cancellation, or instability must
 carry a `// STABILITY:` comment explaining the technique used:
@@ -414,7 +492,7 @@ Always prefer stable standard library primitives:
 Required techniques where applicable: log-sum-exp shifting, Kahan summation,
 Cholesky over LU for PSD matrices, log-space arithmetic for probability products.
 
-## 6.4 Gradient Checks Mandatory
+## 8.4 Gradient Checks Mandatory
 
 Every `Differentiable` implementation must include a gradient check test:
 
@@ -437,7 +515,7 @@ fn grad_check_sigmoid() {
 - Absolute error thresholds are forbidden — they silently pass wrong gradients
 - Tests must cover: `0.0`, `±∞`, subnormal inputs, kink points
 
-## 6.5 Denormals and Backend Performance
+## 8.5 Denormals and Backend Performance
 
 Subnormal floats can cause 10–100× slowdowns via microcode assists on some
 hardware. In `backend/`, document any kernel that may encounter denormals and
@@ -446,13 +524,13 @@ whether flush-to-zero (FTZ) mode is acceptable. FTZ is never acceptable for
 
 ---
 
-# 7. Referential Transparency and Purity
+# 9. Referential Transparency and Purity
 
 `algebra/` and `tensor/` must be **referentially transparent** — same inputs,
 same outputs, always. This is a correctness requirement for structural autodiff,
 not a style preference.
 
-## 7.1 Randomness Must Be Explicit
+## 9.1 Randomness Must Be Explicit
 
 No RNG in `algebra/` or `tensor/`. Stochastic operations take randomness as
 an explicit argument:
@@ -476,7 +554,7 @@ correctly differentiated through — it will silently produce wrong gradients.
 `backend/` generates masks and noise and passes them as tensors. The compute
 graph in `tensor/` and `algebra/` remains deterministic and pure.
 
-## 7.2 In-Place Operations
+## 9.2 In-Place Operations
 
 | Location | Status | Condition |
 |---|---|---|
@@ -489,16 +567,16 @@ pass requires forward-pass values to be intact.
 
 ---
 
-# 8. Ownership and Memory Model
+# 10. Ownership and Memory Model
 
-## 8.1 Owned vs Borrowed Tensors
+## 10.1 Owned vs Borrowed Tensors
 
 - `Tensor<T, N>` — owned, allocates, has defined lifetime
 - `TensorView<'a, T, N>` — borrowed view, zero-copy slice of owned data
 - Slicing and transposing produce views, never silent copies
 - Never copy data to resolve a lifetime conflict — fix the lifetime
 
-## 8.2 Gradient Accumulation vs Replacement
+## 10.2 Gradient Accumulation vs Replacement
 
 Be explicit about whether a gradient operation **accumulates** (`+=`) or
 **replaces** (`=`). Conflating these is the source of a large class of
@@ -507,7 +585,7 @@ gradient checkpointing. Document this in every gradient-producing function.
 
 ---
 
-# 9. Crate-Level Contracts
+# 11. Crate-Level Contracts
 
 ## `algebra/`
 
@@ -525,14 +603,14 @@ gradient checkpointing. Document this in every gradient-producing function.
 - Shape arithmetic verified at compile time where RANK is statically known
 - `Backend` is always a trait bound, never a concrete type
 - Contraction, transpose, and broadcast operations preserve algebraic structure
-- Memory layout is part of the type contract (§4.7)
-- `Tensor<T, N>` vs `TensorView<'a, T, N>` ownership distinction is enforced (§8.1)
+- Memory layout is part of the type contract (§6.7)
+- `Tensor<T, N>` vs `TensorView<'a, T, N>` ownership distinction is enforced (§10.1)
 
 ## `backend/`
 
 - The ONLY crate that may import concrete execution dependencies
 - All implementations gated behind Cargo features — never unconditionally compiled
-- Unsafe code permitted here only; every block requires `// SAFETY:` (see §10)
+- Unsafe code permitted here only; every block requires `// SAFETY:` (see §12)
 - `tensor/` defines *what* to compute; `backend/` defines *how*
 - Kernel-selection logic must never leak upward into `tensor/`
 - `Backend::alloc` must document alignment (32-byte for AVX2, 64-byte for AVX-512)
@@ -541,7 +619,7 @@ gradient checkpointing. Document this in every gradient-producing function.
 
 ---
 
-# 10. Unsafe Code Policy
+# 12. Unsafe Code Policy
 
 ```rust
 // Required format — no exceptions
@@ -563,7 +641,7 @@ Rules:
 
 ---
 
-# 11. Testing Requirements
+# 13. Testing Requirements
 
 Every new feature must include all applicable categories. CI failures block
 merge without exception.
@@ -592,7 +670,7 @@ proptest! {
 **Gradient check tests** — every `Differentiable` impl:
 ```rust
 // Relative error, boundary values (0, ±∞, subnormals, kinks), 1e-4 tolerance
-// See §6.4 for full pattern
+// See §8.4 for full pattern
 ```
 
 **Shape/rank preservation** — every tensor operation:
@@ -604,12 +682,12 @@ proptest! {
 **Numerical stability regression** — every stability-sensitive op:
 ```rust
 // Must not NaN/overflow on large inputs, subnormals, or boundary values.
-// See §6.3 for log_sum_exp pattern.
+// See §8.3 for log_sum_exp pattern.
 ```
 
 ---
 
-# 12. Documentation Standards
+# 14. Documentation Standards
 
 All public items must have doc comments. Trait docs must state: (1) the
 algebraic structure modeled, (2) laws implementors must uphold, (3) a usage
@@ -637,11 +715,11 @@ pub trait CommutativeRing: Ring { ... }
 
 ---
 
-# 13. Rust 2026 Feature Horizon
+# 15. Rust 2026 Feature Horizon
 
 | Feature | Status | Crate | Policy |
 |---|---|---|---|
-| `adt_const_params` | RFC in progress, 2026 target | `tensor/` | In use — see §4.3 |
+| `adt_const_params` | RFC in progress, 2026 target | `tensor/` | In use — see §6.3 |
 | `min_generic_const_args` | Full prototype merged | `tensor/` | In use — annotate `// MGCA:` |
 | `gen` keyword | Reserved in 2024 | all | Never use as identifier |
 | Polonius borrow checker | Nightly | `backend/` | Needed for some view lifetimes |
@@ -661,7 +739,7 @@ always no.
 
 ---
 
-# 14. Prohibited List
+# 16. Prohibited List
 
 Categorically forbidden. Do not introduce. Do not rationalize exceptions.
 
@@ -682,7 +760,7 @@ Categorically forbidden. Do not introduce. Do not rationalize exceptions.
 
 ---
 
-# 15. PR Checklist
+# 17. PR Checklist
 
 ```bash
 cargo test --workspace
@@ -716,7 +794,74 @@ cargo doc --workspace --no-deps
 
 ---
 
-# Final Principle
+# 18. Change Process
+
+Not all changes are equal. Use the right process for the scope of work:
+
+| Change type | Process |
+|---|---|
+| Bug fix, test addition, doc improvement | Open PR directly |
+| New operation in existing trait | Open PR with algebraic motivation in description |
+| New trait in `algebra/` | Open Issue first, tag `design`, get acknowledgment before coding |
+| New crate or workspace restructure | Open Issue, tag `architecture`, requires explicit sign-off |
+| Anything in §16 Prohibited List | Open Issue, tag `architecture`. Do not begin without explicit approval. |
+| Nightly feature not in §15 table | Open Issue, tag `nightly-feature`, before any use |
+
+**Draft PRs are strongly encouraged** for anything beyond a trivial fix. The
+cost of early feedback is zero. The cost of a large PR going in the wrong
+direction is high.
+
+**Commit message format:**
+```
+<crate>: <short imperative description>
+
+<algebraic or mathematical motivation if non-obvious>
+Relates to: #<issue>
+```
+
+Examples:
+```
+algebra: add Norm trait for normed vector spaces
+
+tensor: fix rank arithmetic in contract() for RANK=0 edge case
+Relates to: #47
+
+backend: gate AVX-512 kernel behind cpu-avx512 feature flag
+```
+
+---
+
+# 19. Known Limitations and Active Rough Edges
+
+**Read this before hitting a wall and assuming the codebase is broken.**
+
+These are known issues that are deferred — not bugs to fix unsolicited:
+
+- **`adt_const_params` ICE on complex ADTs:** The nightly feature can panic
+  the compiler on some nested const generic patterns. If you hit an ICE,
+  file a minimal reproducer as a GitHub Issue tagged `compiler-bug` and
+  work around it with a simpler encoding temporarily.
+
+- **Trait solver coherence failures in `algebra/`:** The new Rust trait solver
+  (replacing Chalk) can reject some associated-type bounds that the old solver
+  accepted, and vice versa. If you get unexpected coherence errors, note the
+  nightly version in the issue and tag `trait-solver`.
+
+- **`tensor/` view lifetimes with Polonius:** Some `TensorView` lifetime
+  patterns require the Polonius borrow checker (`-Z polonius`) to compile.
+  These patterns are intentionally kept and are not to be worked around by
+  cloning — they will compile on stable once Polonius stabilizes.
+
+- **No benchmarks yet:** `backend/` has no formal benchmark suite. Performance
+  claims cannot be verified. Do not make performance-motivated changes without
+  first adding a benchmark that proves the claim.
+
+- **`algebra/` trait hierarchy is incomplete:** Several standard algebraic
+  structures (Lie algebras, Hilbert spaces, manifolds) are not yet represented.
+  Do not add them without a design Issue — the hierarchy interactions are
+  non-trivial.
+
+---
 
 Symmetrica encodes mathematics in the type system.
 
@@ -734,5 +879,116 @@ Boundaries are inviolable.
 
 ---
 
-*Last reviewed: 2026-03 — Senior Principal Deep Learning Researcher / Principal Architect*  
-*Format: AGENTS.md — open standard stewarded by the Agentic AI Foundation / Linux Foundation*
+# Appendix A: Machine-Readable Rule Index
+
+> For AI agents and automated tooling. Extract and enforce these rules in CI/CD.
+
+## CRITICAL (Auto-Reject)
+
+| ID | Rule | Detection Pattern | Action |
+|---|---|---|---|
+| `CRITICAL_001` | No crate DAG violation | `algebra/` imports `tensor::` or `backend::` | **REJECT PR** |
+| `CRITICAL_002` | No runtime autodiff tape | `Vec<Box<dyn Op>>`, `struct Tape` | **REJECT PR** |
+| `CRITICAL_003` | Unsafe requires safety comment | `unsafe {` without `// SAFETY:` in preceding 3 lines | **REJECT PR** |
+| `CRITICAL_004` | Stop-gradient must be structural | `* 0.0` in gradient context, missing `StopGrad<T>` | **REJECT PR** |
+| `CRITICAL_005` | No implicit broadcasting | `.broadcast()` without explicit `broadcast_to` | **REJECT PR** |
+| `CRITICAL_006` | No full Hessian construction | `n × n` matrix for curvature without HVP justification | **REJECT PR** |
+| `CRITICAL_007` | No hidden RNG in algebra/tensor | `rand::` in `algebra/` or `tensor/` | **REJECT PR** |
+| `CRITICAL_008` | No dyn Trait in hot paths | `Box<dyn Trait>` in `algebra/` or `tensor/` | **REJECT PR** |
+
+## WARNING (Flag for Review)
+
+| ID | Rule | Detection Pattern | Action |
+|---|---|---|---|
+| `WARNING_001` | New trait requires proptest | `pub trait` without `proptest!` in tests | **FLAG for human review** |
+| `WARNING_002` | Differentiable impl requires gradient check | `impl Differentiable` without `grad_check` test | **FLAG for human review** |
+| `WARNING_003` | Floating-point Field impl requires law docs | `impl Field for f32/f64` without `// LAWS:` comment | **FLAG for human review** |
+| `WARNING_004` | Numerically sensitive op requires stability comment | `exp`, `log`, `sqrt` without `// STABILITY:` | **FLAG for human review** |
+| `WARNING_005` | Non-differentiable op requires annotation | `relu`, `abs`, `sign` without `// NON-DIFFERENTIABLE:` | **FLAG for human review** |
+| `WARNING_006` | Nightly feature requires MGCA comment | `adt_const_params`, `min_generic_const_args` without `// MGCA:` | **FLAG for human review** |
+
+## Validation Commands
+
+```bash
+# CRITICAL_001: Check crate DAG violations
+grep -r "use tensor::" algebra/src/ || true
+grep -r "use backend::" algebra/src/ tensor/src/ || true
+
+# CRITICAL_003: Check undocumented unsafe blocks
+# (Use clippy: cargo clippy -- -D clippy::undocumented_unsafe_blocks)
+
+# CRITICAL_007: Check hidden RNG in algebra/tensor
+grep -r "rand::" algebra/src/ tensor/src/ || true
+
+# CRITICAL_008: Check dyn Trait in hot paths
+grep -r "Box<dyn" algebra/src/ tensor/src/ || true
+
+# WARNING_001: Check for proptest in new trait files
+# (Manual review or custom lint)
+
+# WARNING_002: Check for gradient check tests
+cargo test grad_check --workspace
+
+# All tests must pass
+cargo test --workspace
+cargo clippy --workspace -- -D warnings
+cargo fmt --check
+cargo doc --workspace --no-deps
+```
+
+## Automated Enforcement Script
+
+```bash
+#!/bin/bash
+# scripts/enforce_rules.sh
+# Run in CI before merge
+
+set -e
+
+echo "=== Enforcing AGENTS.md Rules ==="
+
+# CRITICAL_001: Crate DAG
+if grep -r "use tensor::" algebra/src/ 2>/dev/null; then
+    echo "❌ CRITICAL_001: algebra/ imports from tensor/"
+    exit 1
+fi
+
+if grep -r "use backend::" algebra/src/ tensor/src/ 2>/dev/null; then
+    echo "❌ CRITICAL_001: algebra/ or tensor/ imports from backend/"
+    exit 1
+fi
+
+# CRITICAL_007: Hidden RNG
+if grep -r "rand::" algebra/src/ tensor/src/ 2>/dev/null; then
+    echo "❌ CRITICAL_007: Hidden RNG in algebra/ or tensor/"
+    exit 1
+fi
+
+# CRITICAL_008: Dyn Trait in hot paths
+if grep -r "Box<dyn" algebra/src/ tensor/src/ 2>/dev/null; then
+    echo "❌ CRITICAL_008: Box<dyn Trait> in algebra/ or tensor/"
+    exit 1
+fi
+
+# Build and test
+cargo test --workspace || { echo "❌ Tests failed"; exit 1; }
+cargo clippy --workspace -- -D warnings || { echo "❌ Clippy failed"; exit 1; }
+cargo fmt --check || { echo "❌ Format check failed"; exit 1; }
+cargo doc --workspace --no-deps || { echo "❌ Doc build failed"; exit 1; }
+
+echo "✅ All rules enforced successfully"
+```
+
+## Rule Violation Response
+
+| Severity | Response | Escalation |
+|----------|----------|------------|
+| CRITICAL | Auto-reject PR, block merge | None — rule is absolute |
+| WARNING | Flag for human review | Architect sign-off if exception needed |
+| PREFERENCE | Suggest improvement in PR comment | None — advisory only |
+
+---
+
+*Last reviewed: 2026-03 — Principal Project Manager / Senior Principal DL Researcher / Principal Architect*  
+*Format: AGENTS.md — open standard stewarded by the Agentic AI Foundation / Linux Foundation*  
+*Next scheduled review: when any §16 item is reconsidered, or at next major milestone*
