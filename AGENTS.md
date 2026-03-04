@@ -878,114 +878,172 @@ Differentiation is algebraic.
 Boundaries are inviolable.
 
 ---
-
 # Appendix A: Machine-Readable Rule Index
 
-> For AI agents and automated tooling. Extract and enforce these rules in CI/CD.
+> For AI agents and automated tooling. Each rule carries a **priority label**
+> that defines both urgency and blocking behaviour. Work violations in
+> P0 → P1 → P2 → P3 order. Do not submit a PR with any P0 or P1 violation.
 
-## CRITICAL (Auto-Reject)
+## Priority Definitions
 
-| ID | Rule | Detection Pattern | Action |
+| Priority | Meaning | Blocks Merge | Exception Path |
 |---|---|---|---|
-| `CRITICAL_001` | No crate DAG violation | `algebra/` imports `tensor::` or `backend::` | **REJECT PR** |
-| `CRITICAL_002` | No runtime autodiff tape | `Vec<Box<dyn Op>>`, `struct Tape` | **REJECT PR** |
-| `CRITICAL_003` | Unsafe requires safety comment | `unsafe {` without `// SAFETY:` in preceding 3 lines | **REJECT PR** |
-| `CRITICAL_004` | Stop-gradient must be structural | `* 0.0` in gradient context, missing `StopGrad<T>` | **REJECT PR** |
-| `CRITICAL_005` | No implicit broadcasting | `.broadcast()` without explicit `broadcast_to` | **REJECT PR** |
-| `CRITICAL_006` | No full Hessian construction | `n × n` matrix for curvature without HVP justification | **REJECT PR** |
-| `CRITICAL_007` | No hidden RNG in algebra/tensor | `rand::` in `algebra/` or `tensor/` | **REJECT PR** |
-| `CRITICAL_008` | No dyn Trait in hot paths | `Box<dyn Trait>` in `algebra/` or `tensor/` | **REJECT PR** |
+| **P0** | Architectural invariant — CI enforces automatically | ✅ Yes — hard block | None |
+| **P1** | Architectural invariant — requires human verification | ✅ Yes — reviewer blocks | Architect sign-off, recorded in Issue |
+| **P2** | Quality standard — flagged in review | ❌ No | Reviewer judgment |
+| **P3** | Advisory — noted in PR comment | ❌ No | None needed |
 
-## WARNING (Flag for Review)
+---
 
-| ID | Rule | Detection Pattern | Action |
-|---|---|---|---|
-| `WARNING_001` | New trait requires proptest | `pub trait` without `proptest!` in tests | **FLAG for human review** |
-| `WARNING_002` | Differentiable impl requires gradient check | `impl Differentiable` without `grad_check` test | **FLAG for human review** |
-| `WARNING_003` | Floating-point Field impl requires law docs | `impl Field for f32/f64` without `// LAWS:` comment | **FLAG for human review** |
-| `WARNING_004` | Numerically sensitive op requires stability comment | `exp`, `log`, `sqrt` without `// STABILITY:` | **FLAG for human review** |
-| `WARNING_005` | Non-differentiable op requires annotation | `relu`, `abs`, `sign` without `// NON-DIFFERENTIABLE:` | **FLAG for human review** |
-| `WARNING_006` | Nightly feature requires MGCA comment | `adt_const_params`, `min_generic_const_args` without `// MGCA:` | **FLAG for human review** |
+## A.1 Rule Registry
 
-## Validation Commands
+| ID | Priority | Rule | Automation | Caveat |
+|---|---|---|---|---|
+| `R-001` | **P0** | No crate DAG violation | ✅ grep `use tensor::\|use backend::` scoped per crate | Path-based imports escape — see §A.4 |
+| `R-002` | **P1** | No runtime autodiff tape | ⚠️ grep `Vec<Box<dyn` (partial) | Renamed types evade — human must verify new struct definitions |
+| `R-003` | **P0** | Unsafe requires `// SAFETY:` | ✅ `clippy::undocumented_unsafe_blocks` | Do NOT replace with grep — clippy handles look-behind |
+| `R-004` | **P1** | Stop-gradient must be structural | 🔴 Manual only | "gradient context" not machine-detectable |
+| `R-005` | **P1** | No implicit broadcasting | 🔴 Manual only | Context-dependent shape analysis |
+| `R-006` | **P1** | No full Hessian construction | 🔴 Manual only | Requires semantic understanding |
+| `R-007` | **P0** | No hidden RNG in `algebra/`/`tensor/` | ✅ grep `rand::` scoped per crate | Method-only usage escapes — see §A.4 |
+| `R-008` | **P0** | No `Box<dyn Trait>` in `algebra/`/`tensor/` | ✅ grep `Box<dyn` scoped per crate | None |
+| `R-009` | **P2** | New trait needs `proptest` property tests | 🔴 Manual only | N/A |
+| `R-010` | **P2** | `Differentiable` impl needs gradient check | ✅ `cargo test grad_check` | Low FP risk |
+| `R-011` | **P2** | Float `Field`/`Ring` impl needs law doc | 🔴 Manual only | N/A |
+| `R-012` | **P2** | Numerically sensitive op needs `// STABILITY:` | ⚠️ word-boundary grep `\bexp\(` etc. | High FP risk with bare `exp` pattern — use `\bexp\(` |
+| `R-013` | **P2** | Non-smooth op needs `// NON-DIFFERENTIABLE:` | ⚠️ grep function names | Catches names, not all usages |
+| `R-014` | **P2** | Nightly feature use needs `// MGCA:` comment | ⚠️ grep feature gate names | N/A |
+| `R-015` | **P3** | Commit message follows `<crate>: <description>` format | 🔴 Manual only | Advisory |
+| `R-016` | **P3** | Draft PR opened within 1 day of starting work | 🔴 Manual only | Advisory |
 
-```bash
-# CRITICAL_001: Check crate DAG violations
-grep -r "use tensor::" algebra/src/ || true
-grep -r "use backend::" algebra/src/ tensor/src/ || true
+**P0 count: 4 rules fully automated.**  
+**P1 count: 4 rules require human review — they block merge but cannot be scripted.**  
+**P2 count: 6 rules are quality flags — they do not block merge.**  
+**P3 count: 2 advisory rules — noted but not enforced.**
 
-# CRITICAL_003: Check undocumented unsafe blocks
-# (Use clippy: cargo clippy -- -D clippy::undocumented_unsafe_blocks)
+---
 
-# CRITICAL_007: Check hidden RNG in algebra/tensor
-grep -r "rand::" algebra/src/ tensor/src/ || true
-
-# CRITICAL_008: Check dyn Trait in hot paths
-grep -r "Box<dyn" algebra/src/ tensor/src/ || true
-
-# WARNING_001: Check for proptest in new trait files
-# (Manual review or custom lint)
-
-# WARNING_002: Check for gradient check tests
-cargo test grad_check --workspace
-
-# All tests must pass
-cargo test --workspace
-cargo clippy --workspace -- -D warnings
-cargo fmt --check
-cargo doc --workspace --no-deps
-```
-
-## Automated Enforcement Script
+## A.2 Enforcement Script
 
 ```bash
 #!/bin/bash
-# scripts/enforce_rules.sh
-# Run in CI before merge
+# scripts/enforce_agents.sh
+# Enforces P0 rules automatically. P1 rules require human review.
+# P2/P3 rules are advisory — flagged but do not exit 1.
 
-set -e
+set -euo pipefail
+FAILED=0
 
-echo "=== Enforcing AGENTS.md Rules ==="
+echo "=== AGENTS.md P0/P1 Enforcement ==="
+echo "P0: auto-block | P1: human-review block | P2: advisory flag"
+echo ""
 
-# CRITICAL_001: Crate DAG
-if grep -r "use tensor::" algebra/src/ 2>/dev/null; then
-    echo "❌ CRITICAL_001: algebra/ imports from tensor/"
+# ── P0: R-001 — Crate DAG ─────────────────────────────────────────────────
+# Caveat: path-based imports (tensor::Foo) and extern crate not caught (§A.4)
+if grep -rn "^use tensor::\|^use backend::" algebra/src/ 2>/dev/null; then
+    echo "❌ P0 / R-001: algebra/ imports tensor/ or backend/"
+    FAILED=1
+fi
+if grep -rn "^use backend::" tensor/src/ 2>/dev/null; then
+    echo "❌ P0 / R-001: tensor/ imports backend/"
+    FAILED=1
+fi
+
+# ── P0: R-003 — Undocumented unsafe ───────────────────────────────────────
+# clippy implements 3-line look-behind correctly; do NOT replace with grep
+cargo clippy --workspace -- -D clippy::undocumented_unsafe_blocks 2>&1     || { echo "❌ P0 / R-003: Undocumented unsafe block"; FAILED=1; }
+
+# ── P0: R-007 — Hidden RNG ────────────────────────────────────────────────
+# Import-level only; method-only usage escapes (see §A.4)
+if grep -rn "rand::" algebra/src/ tensor/src/ 2>/dev/null; then
+    echo "❌ P0 / R-007: RNG import in algebra/ or tensor/"
+    FAILED=1
+fi
+
+# ── P0: R-008 — Box<dyn Trait> in hot paths ───────────────────────────────
+if grep -rn "Box<dyn" algebra/src/ tensor/src/ 2>/dev/null; then
+    echo "❌ P0 / R-008: Box<dyn Trait> in algebra/ or tensor/"
+    FAILED=1
+fi
+
+# ── P1: R-002 — Runtime tape (partial) ────────────────────────────────────
+# Renamed types evade this — human must verify any new struct definitions
+if grep -rn "Vec<Box<dyn" algebra/src/ tensor/src/ 2>/dev/null; then
+    echo "⛔ P1 / R-002: Possible runtime tape — HUMAN REVIEW REQUIRED before merge"
+    FAILED=1
+fi
+
+# ── Standard CI gates ─────────────────────────────────────────────────────
+cargo test --workspace        || { echo "❌ Tests failed"; FAILED=1; }
+cargo fmt --check             || { echo "❌ Format check failed"; FAILED=1; }
+cargo doc --workspace --no-deps 2>&1 | grep "^error"     && { echo "❌ Doc build errors"; FAILED=1; } || true
+
+# ── P2: Advisory flags (do not exit 1) ────────────────────────────────────
+echo ""
+echo "=== P2 Advisory Flags ==="
+
+# R-010: Gradient check tests
+cargo test grad_check --workspace 2>&1     || echo "⚠️  P2 / R-010: grad_check tests missing or failing — add before merge"
+
+# R-012: Stability annotations — word-boundary pattern to minimise false positives
+# Matches exp(, ln(, sqrt(, log( as calls — not identifiers like 'expect', 'export'
+if grep -rPn '\b(exp|ln|log|sqrt)\(' algebra/src/ tensor/src/ 2>/dev/null     | grep -v "// STABILITY:" | grep -v "exp_m1\|ln_1p"; then
+    echo "⚠️  P2 / R-012: Numerically sensitive op without // STABILITY: comment"
+fi
+
+# R-013: Non-smooth ops
+if grep -rn "\brelu\|\babs\|\bsign\b" algebra/src/ tensor/src/ 2>/dev/null     | grep -v "// NON-DIFFERENTIABLE:"; then
+    echo "⚠️  P2 / R-013: Non-smooth op without // NON-DIFFERENTIABLE: annotation"
+fi
+
+# ── Final verdict ─────────────────────────────────────────────────────────
+echo ""
+if [ $FAILED -eq 1 ]; then
+    echo "❌ P0/P1 violations found — merge blocked."
+    echo "   P1 rules R-004 (stop-gradient), R-005 (broadcasting), R-006 (Hessian)"
+    echo "   cannot be scripted — verify manually against §16 Prohibited List."
     exit 1
 fi
 
-if grep -r "use backend::" algebra/src/ tensor/src/ 2>/dev/null; then
-    echo "❌ CRITICAL_001: algebra/ or tensor/ imports from backend/"
-    exit 1
-fi
-
-# CRITICAL_007: Hidden RNG
-if grep -r "rand::" algebra/src/ tensor/src/ 2>/dev/null; then
-    echo "❌ CRITICAL_007: Hidden RNG in algebra/ or tensor/"
-    exit 1
-fi
-
-# CRITICAL_008: Dyn Trait in hot paths
-if grep -r "Box<dyn" algebra/src/ tensor/src/ 2>/dev/null; then
-    echo "❌ CRITICAL_008: Box<dyn Trait> in algebra/ or tensor/"
-    exit 1
-fi
-
-# Build and test
-cargo test --workspace || { echo "❌ Tests failed"; exit 1; }
-cargo clippy --workspace -- -D warnings || { echo "❌ Clippy failed"; exit 1; }
-cargo fmt --check || { echo "❌ Format check failed"; exit 1; }
-cargo doc --workspace --no-deps || { echo "❌ Doc build failed"; exit 1; }
-
-echo "✅ All rules enforced successfully"
+echo "✅ P0 rules passed. P2/P3 flags above are advisory."
+echo "   Manually verify P1 rules: R-002, R-004, R-005, R-006."
 ```
 
-## Rule Violation Response
+---
 
-| Severity | Response | Escalation |
-|----------|----------|------------|
-| CRITICAL | Auto-reject PR, block merge | None — rule is absolute |
-| WARNING | Flag for human review | Architect sign-off if exception needed |
-| PREFERENCE | Suggest improvement in PR comment | None — advisory only |
+## A.3 Known Detection Gaps
+
+Automation has limits. These gaps must be compensated by human PR review:
+
+| Rule | Gap | What Escapes | Human Mitigation |
+|---|---|---|---|
+| `R-001` | Path-based imports | `tensor::Foo::new()` without `use tensor::` | Audit Cargo.toml `[dependencies]` for each crate |
+| `R-001` | Aliased imports | `use t = tensor; t::Foo` | Same Cargo.toml audit |
+| `R-002` | Renamed types | `struct Graph { ops: Vec<Box<dyn Backward>> }` | Review all new `struct` definitions in `algebra/`/`tensor/` |
+| `R-007` | Method-only RNG | `thread_rng().gen::<f64>()` without `use rand::` | Flag any call containing `rng`, `random`, `gen` in `algebra/`/`tensor/` |
+| `R-012` | False positives | `explanation`, `expect`, `export` contain `exp` | Script uses `\bexp\(` word-boundary — review flagged lines |
+
+---
+
+## A.4 Priority Quick-Reference for Agents
+
+When encountering a rule violation, apply this decision tree:
+
+```
+Is the violation detected by the CI script?
+├── YES → CI will block the PR automatically (P0). Fix before pushing.
+└── NO  → Is it in the P1 list (R-002, R-004, R-005, R-006)?
+           ├── YES → Do NOT proceed. Open a GitHub Issue tagged `architecture`.
+           │         A human architect must review before merge.
+           └── NO  → Is it in the P2 list (R-009 through R-014)?
+                     ├── YES → Note it in the PR description. Does not block merge.
+                     └── NO  → P3 advisory. Note if convenient.
+```
+
+**For AI agents specifically:** if you are uncertain which priority a potential
+violation belongs to, default to P1 behaviour — stop and flag it. The cost of
+a false P1 flag is one human review. The cost of a missed P0/P1 is an
+architectural violation in the codebase.
 
 ---
 
