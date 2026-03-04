@@ -299,6 +299,106 @@ Unconstrained generics compound compile times aggressively. To prevent this:
 - Excessive monomorphization (binary size growth without perf justification)
   must be addressed before merge
 
+## 6.10 Associated Type Selection Policy — Regular vs GAT
+
+The decision rule is single and non-negotiable:
+
+> **Use a GAT if and only if the associated type's validity depends on a
+> borrow from `Self`. Use a regular associated type for everything else.**
+
+Mixing these up in either direction is wrong. A GAT where a regular type
+suffices propagates lifetime noise through the entire trait hierarchy. A
+regular associated type where a GAT is needed forces the wrong choice between
+cloning (destroying zero-copy) and unsoundness (lying about lifetimes).
+
+### Regular associated types — lifetime-independent
+
+These describe *what kind of thing* a trait works with. They carry no borrow
+from `Self` and are fully owned or statically known:
+
+```rust
+trait TensorAlgebra {
+    type Scalar: Field;          // the numeric type — owns nothing
+    type Gradient: VectorSpace;  // the cotangent element — fully owned
+    type Shape: ShapeEncoding;   // compile-time rank/dimension info
+    type Backend: Backend;       // the execution interface — a type, not a borrow
+}
+```
+
+Adding a lifetime to any of these four is a design error. If `Gradient` seems
+to need a lifetime, the gradient is not being modelled as a value — fix the
+algebra.
+
+### GATs — lifetime tied to a borrow from `Self`
+
+These describe *something that borrows from `Self`* and cannot outlive it.
+The lifetime must be present in the associated type because the associated
+type's validity is a function of the source's lifetime:
+
+```rust
+trait TensorOps {
+    // View borrows from self — cannot outlive the source tensor
+    type View<'a>: TensorView where Self: 'a;
+
+    // Iterator holds a reference into self — same constraint
+    type Iter<'a>: Iterator where Self: 'a;
+
+    // A borrowed slice of the underlying storage
+    type Slice<'a>: StorageSlice where Self: 'a;
+
+    // Zero-copy structural transform (transpose, reshape) — reinterprets
+    // borrowed memory without allocating; must not outlive source
+    type ZeroCopyTransform<'a>: TensorView where Self: 'a;
+}
+```
+
+### Differentiable projections — own by default, GAT only if checkpointing
+
+A differentiable projection is a morphism `f: A → B` with a structural
+pullback `f*: B* → A*`. In structural autodiff, pullbacks are values — they
+carry whatever forward-pass data they need **by value**, not by borrow:
+
+```rust
+// CORRECT — pullback owns its data; no lifetime required
+trait Differentiable {
+    type Domain:     VectorSpace;
+    type Codomain:   VectorSpace;
+    type Derivative: LinearMap; // fully owned — regular associated type
+    fn diff(&self) -> Self::Derivative;
+}
+```
+
+A GAT is required only if the projection *borrows* a forward activation rather
+than owning it — which arises specifically in gradient checkpointing, where the
+recompute boundary holds a reference to the saved input:
+
+```rust
+// CORRECT — Checkpoint borrows saved_input; projection lifetime is real
+trait CheckpointedMap {
+    type Projection<'a>: DifferentiableMap where Self: 'a;
+    fn project<'a>(&'a self) -> Self::Projection<'a>;
+}
+```
+
+If you find yourself adding a lifetime to `Derivative` outside of a
+checkpointing context: stop. The pullback should own its data. If it cannot
+own its data, the forward pass is retaining too much state — restructure it.
+
+### Decision table
+
+| Associated type | Use | Reason |
+|---|---|---|
+| `Scalar` | Regular | Lifetime-independent numeric type |
+| `Gradient` | Regular | Fully owned cotangent value |
+| `Shape` | Regular | Compile-time encoding, no borrow |
+| `Backend` | Regular | Execution interface, no borrow from tensor |
+| `View<'a>` | GAT | Borrows from source tensor |
+| `Iter<'a>` | GAT | Holds reference into storage |
+| `Slice<'a>` | GAT | Borrowed sub-storage |
+| `ZeroCopyTransform<'a>` | GAT | Reinterprets borrowed memory |
+| `Derivative` (autodiff) | Regular | Pullback owns its data |
+| `Projection<'a>` (checkpoint only) | GAT | Borrows saved forward activation |
+
 ---
 
 # 7. Structural Autodiff Doctrine
@@ -957,12 +1057,13 @@ Boundaries are inviolable.
 | `R-012` | **P2** | Numerically sensitive op needs `// STABILITY:` | ⚠️ word-boundary grep `\bexp\(` etc. | High FP risk with bare `exp` pattern — use `\bexp\(` |
 | `R-013` | **P2** | Non-smooth op needs `// NON-DIFFERENTIABLE:` | ⚠️ grep function names | Catches names, not all usages |
 | `R-014` | **P2** | Nightly feature use needs `// MGCA:` comment | ⚠️ grep feature gate names | N/A |
-| `R-015` | **P3** | Commit message follows `<crate>: <description>` format | 🔴 Manual only | Advisory |
-| `R-016` | **P3** | Draft PR opened within 1 day of starting work | 🔴 Manual only | Advisory |
+| `R-015` | **P2** | Associated type selection follows §6.10 policy (regular vs GAT) | 🔴 Manual only | New lifetime on `Scalar`/`Gradient`/`Shape`/`Backend`/`Derivative` is a violation; missing lifetime on `View`/`Iter`/`Slice` is a violation |
+| `R-016` | **P3** | Commit message follows `<crate>: <description>` format | 🔴 Manual only | Advisory |
+| `R-017` | **P3** | Draft PR opened within 1 day of starting work | 🔴 Manual only | Advisory |
 
 **P0 count: 4 rules fully automated.**  
 **P1 count: 4 rules require human review — they block merge but cannot be scripted.**  
-**P2 count: 6 rules are quality flags — they do not block merge.**  
+**P2 count: 7 rules are quality flags — they do not block merge.**  
 **P3 count: 2 advisory rules — noted but not enforced.**
 
 ---
@@ -1085,7 +1186,7 @@ Is the violation detected by the CI script?
 └── NO  → Is it in the P1 list (R-002, R-004, R-005, R-006)?
            ├── YES → Do NOT proceed. Open a GitHub Issue tagged `architecture`.
            │         A human architect must review before merge.
-           └── NO  → Is it in the P2 list (R-009 through R-014)?
+           └── NO  → Is it in the P2 list (R-009 through R-015)?
                      ├── YES → Note it in the PR description. Does not block merge.
                      └── NO  → P3 advisory. Note if convenient.
 ```
