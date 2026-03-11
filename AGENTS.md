@@ -75,6 +75,7 @@ is WIP and diverges from any prior snapshot an agent may have seen.
 symmetrica/
 ├── algebra/    # Abstract algebraic traits and laws
 ├── tensor/     # Tensor<T, B: Backend> — parameterised over the trait, not any impl
+│   └── shape/  # Compile-time shape algebra (see §20)
 └── backend/    # trait Backend (abstract interface) + concrete impls (CpuBackend, ...)
 ```
 
@@ -120,6 +121,7 @@ This DAG is the entire abstraction guarantee. One violation unravels it.
 |---|---|---|
 | `algebra/` trait hierarchy | 🔄 Active | Ring, Field, VectorSpace, Module |
 | `tensor/` core types | 🔄 Active | Const-generic rank, owned + view |
+| `tensor/shape` module | 🔄 Active | Compile-time shape algebra (see §20) |
 | `backend/` CPU impl | 🔄 Active | BLAS bindings, basic kernels |
 | Forward mode autodiff (JVP) | 🔄 Active | Dual number encoding |
 | Reverse mode autodiff (VJP) | 🔄 Active | Structural pullbacks |
@@ -269,7 +271,7 @@ struct Gradient<V: VectorSpace> {
 **Implicit broadcasting is prohibited.** NumPy/PyTorch-style silent shape
 expansion is a frequent source of research bugs that are invisible in small
 tests. All broadcasting must be an explicit `broadcast_to` morphism visible
-in the type signature.
+in the type signature, defined in `tensor::shape` (see §20).
 
 ## 6.7 Memory Layout Is Part of the Type
 
@@ -295,7 +297,8 @@ Unconstrained generics compound compile times aggressively. To prevent this:
 - Blanket impls over unconstrained generics are prohibited
 - Core `algebra/` traits must be sealed
 - Nested `Dual` types beyond second order (`Dual<Dual<T>>`) require design review
-- Compile-time regressions over 15% must be investigated before merge
+- **Compile-time regressions over 10% must be investigated and resolved before merge**
+  (see §22 for the full compile-time budget policy)
 - Excessive monomorphization (binary size growth without perf justification)
   must be addressed before merge
 
@@ -729,7 +732,7 @@ gradient checkpointing. Document this in every gradient-producing function.
 - Depends on `algebra/` and `backend/` (for the trait only)
 - `B: Backend` is always a trait bound; concrete types (`CpuBackend`, etc.) are
   injected by callers and must never be named inside `tensor/`
-- Shape arithmetic verified at compile time where RANK is statically known
+- Shape arithmetic is defined and verified in the `tensor::shape` submodule (see §20)
 - Contraction, transpose, and broadcast operations preserve algebraic structure
 - Memory layout is part of the type contract (§6.7)
 - `Tensor<T, N>` vs `TensorView<'a, T, N>` ownership distinction is enforced (§10.1)
@@ -749,10 +752,12 @@ gradient checkpointing. Document this in every gradient-producing function.
 - `struct CpuBackend` — current CPU/BLAS implementation
 - Future: `struct CudaBackend`, `struct WasmBackend`, etc.
 - The ONLY location where `unsafe`, SIMD, and BLAS bindings are permitted
+- The ONLY location where kernel fusion may be applied (see §19)
 - All kernels gated behind Cargo features — never unconditionally compiled
 - `alloc` implementations must document alignment (32-byte for AVX2, 64-byte for AVX-512)
 - Alignment violations in SIMD are UB — tests will not catch them
 - Reductions must support deterministic mode with stable parallel reduction order
+- All non-trivial kernels must have a `criterion` benchmark (see §23)
 - GPU/WASM impls are out of scope — do not add without a tracked design Issue (see §4)
 
 ---
@@ -888,6 +893,7 @@ Categorically forbidden. Do not introduce. Do not rationalize exceptions.
 | Runtime autodiff tape (`Vec<Box<dyn Op>>`) | Contradicts structural autodiff |
 | `std::autodiff` / Enzyme | LLVM-level, bypasses type system |
 | Implicit broadcasting | Silent shape changes hide research bugs |
+| Kernel fusion outside `backend/` Layer 2 | Tensor semantics must remain pure; fusion is a backend optimization (see §19) |
 | `async` in compute paths | Parallelism is backend dispatch, not async |
 | Python bindings (premature) | Freezes API before semantics are stable |
 | Mixed precision in `algebra/`/`tensor/` | Precision is a backend concern |
@@ -917,6 +923,7 @@ cargo doc --workspace --no-deps
 - [ ] `stop_gradient` is structural (type wrapper), not numerical (`* 0.0`)
 - [ ] No implicit broadcasting introduced
 - [ ] No full Hessian matrix constructed — HVPs only
+- [ ] No kernel fusion in `algebra/` or `tensor/` — fusion is backend-only (§19)
 
 **Numerical**
 - [ ] New `Differentiable` impls have gradient check tests (relative error, 1e-4)
@@ -927,9 +934,13 @@ cargo doc --workspace --no-deps
 
 **Structure**
 - [ ] New algebraic traits have `proptest` tests using relative error
-- [ ] New tensor ops have shape/rank preservation tests
+- [ ] New tensor ops have shape/rank preservation tests via `tensor::shape` (§20)
 - [ ] Autodiff composability annotated or non-differentiability documented
 - [ ] PR description states the algebraic motivation, not just the code change
+
+**Performance**
+- [ ] No compile-time regression >10% (see §22)
+- [ ] New `backend/` kernels have a `criterion` benchmark (see §23)
 
 ---
 
@@ -970,7 +981,465 @@ backend: gate AVX-512 kernel behind cpu-avx512 feature flag
 
 ---
 
-# 19. Known Limitations and Active Rough Edges
+# 19. Kernel Fusion Policy
+
+Kernel fusion — combining multiple tensor operations into a single backend
+kernel to reduce memory bandwidth — is a valid and important optimization.
+It is also a source of subtle semantic violations if applied at the wrong
+abstraction layer.
+
+## 19.1 The Invariant
+
+**Kernel fusion is permitted only in `backend/` Layer 2 (concrete impls).**
+
+`algebra/` and `tensor/` define *what* an operation means algebraically.
+`backend/` defines *how* it executes. Fusion is an execution strategy, not
+an algebraic identity. Mixing them destroys the abstraction boundary that
+allows backends to be swapped without changing semantics.
+
+## 19.2 What Fusion May Not Do
+
+A fused kernel is semantically correct only if it produces bitwise-identical
+results to the sequential unfused kernels, modulo floating-point reassociation
+that is explicitly documented. Fusion must never:
+
+- Change the mathematical result of a sequence of operations in a way not
+  covered by a documented stability trade-off
+- Alter the differentiation semantics — the pullback of a fused kernel must
+  equal the composition of the individual pullbacks
+- Introduce implicit broadcasting that `tensor/` does not model
+- Skip operations that have side-effects on shape or layout
+- Violate the deterministic reduction order required for `deterministic_mode`
+
+## 19.3 Expressing Fusion
+
+Fusion opportunities are expressed as pattern matches on sequences of
+`Backend` method calls in Layer 2. They are never expressed as new traits
+in `algebra/` or new types in `tensor/`:
+
+```rust
+// CORRECT — fusion lives entirely in backend/ Layer 2
+impl CpuBackend {
+    // Fused multiply-add: avoids a round-trip through memory
+    // STABILITY: result equivalent to sequential mul then add, same rounding
+    fn fused_mul_add<T: Scalar>(
+        &self, a: &Storage<T>, b: &Storage<T>, c: &Storage<T>
+    ) -> Storage<T> { ... }
+}
+
+// WRONG — fusion as a new tensor type or algebra trait
+trait Fusable { fn fuse_with(self, other: impl TensorOp) -> FusedOp; }
+```
+
+## 19.4 Autodiff Through Fused Kernels
+
+Every fused kernel must have a verified pullback that agrees with the
+composed pullback of its constituent operations. This must be tested with
+a gradient check using the same relative-error standard as §8.4.
+
+```rust
+#[test]
+fn grad_check_fused_mul_add() {
+    // Verify: ∂(fused_mul_add)/∂a == ∂(a*b + c)/∂a (sequential)
+    // Use relative error < 1e-4 — see §8.4
+}
+```
+
+---
+
+# 20. Shape Algebra Module (`tensor::shape`)
+
+Shape arithmetic in a rank-polymorphic tensor library is not trivial. Implicit
+or ad-hoc shape reasoning is a primary source of silent bugs. All shape
+operations must live in a single, well-typed module.
+
+## 20.1 Module Purpose
+
+`tensor::shape` is the **sole location** for compile-time shape reasoning.
+It encodes the rules for how ranks and dimensions transform under each tensor
+operation — contraction, broadcast, transpose, reshape — as types and const
+expressions, not as runtime assertions.
+
+Any PR that introduces shape arithmetic outside this module will be rejected.
+
+## 20.2 Shape Encoding
+
+A shape is an array of dimension sizes indexed by rank:
+
+```rust
+// Shape is a compile-time value — RANK is a const generic
+type Shape<const RANK: usize> = [usize; RANK];
+
+// ShapeEncoding: the trait that algebra/ and tensor/ operate over
+pub trait ShapeEncoding {
+    const RANK: usize;
+    fn dims(&self) -> Shape<{ Self::RANK }>;
+}
+```
+
+## 20.3 Typed Shape Operations
+
+Each operation on tensors has a corresponding shape-level morphism. The
+output shape must be computable from input shapes **at compile time** wherever
+rank is statically known.
+
+### Contraction
+
+Contraction over `K` shared indices reduces rank:
+
+```rust
+// contract: [A × K] ⊗ [K × B] → [A × B]
+// Output rank = RANK_LEFT + RANK_RIGHT - 2 * NUM_CONTRACT_AXES
+pub const fn contract_rank(left: usize, right: usize, k: usize) -> usize {
+    left + right - 2 * k
+}
+```
+
+Contracting over axes that do not exist or have mismatched sizes must be a
+**compile error**, not a runtime panic. Dimension mismatches that cannot be
+checked at compile time must return `Result`, never panic.
+
+### Broadcast
+
+Broadcasting is an explicit, typed morphism — never implicit (see §6.6):
+
+```rust
+// broadcast_to: Shape<M> → Shape<N> where N >= M
+// The shape difference is explicit in the type signature
+pub fn broadcast_to<const M: usize, const N: usize>(
+    src: Shape<M>, target: Shape<N>
+) -> Result<Shape<N>, BroadcastError>
+where [(); N - M]: // N >= M enforced at compile time
+{ ... }
+```
+
+`BroadcastError` is returned (not panicked) when runtime dimension
+compatibility fails (e.g., a size-3 axis cannot broadcast to size-5).
+
+### Transpose
+
+Transpose is a permutation of axes. The rank is preserved; the dimension
+order changes:
+
+```rust
+// transpose: Shape<N> × Permutation<N> → Shape<N>
+// Permutation validity (no repeats, all indices in range) is checked at construction
+pub struct Permutation<const N: usize>([usize; N]);
+
+impl<const N: usize> Permutation<N> {
+    pub fn new(perm: [usize; N]) -> Result<Self, PermutationError> {
+        // validate: all values in 0..N, no repeats
+    }
+}
+
+pub fn transpose_shape<const N: usize>(
+    shape: Shape<N>, perm: &Permutation<N>
+) -> Shape<N> { ... }
+```
+
+### Reshape
+
+Reshape is valid only when the total number of elements is preserved:
+
+```rust
+// reshape: Shape<M> → Shape<N> where product(M dims) == product(N dims)
+// Validity is a runtime check because N dims are not statically constrained
+pub fn reshape<const M: usize, const N: usize>(
+    src: Shape<M>, target: Shape<N>
+) -> Result<Shape<N>, ReshapeError> {
+    // ReshapeError if element counts differ
+}
+```
+
+## 20.4 Shape Arithmetic in Tests
+
+Every tensor operation test must assert the output shape explicitly, in
+addition to value correctness:
+
+```rust
+#[test]
+fn contract_output_shape() {
+    // [3 × 4] · [4 × 5] → [3 × 5]
+    let a: Tensor<f64, 2, _> = ...;
+    let b: Tensor<f64, 2, _> = ...;
+    let c = contract(&a, &b, 1);
+    assert_eq!(c.shape(), [3, 5]);
+}
+```
+
+---
+
+# 21. Category-Theoretic Structure
+
+Symmetrica's design is grounded in category theory. Making this structure
+explicit helps contributors reason about what operations are valid, how
+autodiff composes, and where new abstractions should live.
+
+## 21.1 The Category
+
+Symmetrica defines an implicit category **Tens** where:
+
+- **Objects** are vector spaces (types implementing `VectorSpace`)
+- **Morphisms** are differentiable maps between vector spaces
+  (types implementing `Differentiable<Domain = A, Codomain = B>`)
+- **Composition** is function composition, verified associative at the type level
+- **Identity** morphisms exist for every object (the identity map)
+
+This is not a metaphor — it is the architectural invariant. Every trait and
+type in `algebra/` and `tensor/` must fit this picture. If a proposed abstraction
+does not correspond to an object, morphism, or functor in this category,
+it does not belong in `algebra/`.
+
+## 21.2 Objects → Vector Spaces
+
+Types implementing `VectorSpace` are the objects of **Tens**:
+
+```rust
+// VectorSpace: the objects
+// Must satisfy: closure, associativity, commutativity of +,
+//               scalar distributivity, identity (zero vector), inverses
+pub trait VectorSpace: Module {
+    type Scalar: Field;
+    fn zero() -> Self;
+    fn add(a: Self, b: Self) -> Self;
+    fn scale(s: Self::Scalar, v: Self) -> Self;
+}
+```
+
+Concrete tensors (`Tensor<T, N, B>`) are elements of vector space objects,
+not objects themselves. The distinction matters: the space `ℝⁿ` is the
+object; a particular vector in `ℝⁿ` is an element.
+
+## 21.3 Morphisms → Differentiable Maps
+
+Morphisms in **Tens** are smooth maps `f: A → B` between vector spaces:
+
+```rust
+// Differentiable: the morphisms
+// The derivative at a point is a linear map (element of the tangent space)
+pub trait Differentiable {
+    type Domain:     VectorSpace;
+    type Codomain:   VectorSpace;
+    // The derivative: a linear map from tangent(Domain) → tangent(Codomain)
+    type Derivative: LinearMap<
+        Domain   = <Self::Domain as VectorSpace>::Tangent,
+        Codomain = <Self::Codomain as VectorSpace>::Tangent,
+    >;
+    fn apply(&self, x: Self::Domain) -> Self::Codomain;
+    fn diff(&self, x: &Self::Domain) -> Self::Derivative;
+}
+```
+
+Composition of morphisms must be valid in both directions: `f: A → B` and
+`g: B → C` compose to `g ∘ f: A → C`. The chain rule then gives
+`D(g ∘ f) = Dg · Df` — this is exactly the VJP pullback composition.
+
+## 21.4 Pullbacks → Cotangent Maps
+
+The **cotangent** (dual) of a vector space `V` is `V* = Hom(V, ℝ)`. The
+pullback (VJP) of a morphism `f: A → B` is the linear map
+`f*: B* → A*` that carries cotangent vectors backward:
+
+```rust
+// Pullback: the cotangent functor applied to a morphism
+// f* is contravariant: reverses the direction of arrows
+pub trait Pullback<W: VectorSpace> {
+    type Cotangent: VectorSpace;
+    // f*(w) — apply the cotangent map to a cotangent vector w ∈ W*
+    fn pullback(&self, cotangent: W) -> Self::Cotangent;
+}
+```
+
+This is the categorical dual of forward-mode autodiff. Forward mode applies
+the **pushforward** (tangent map, covariant); reverse mode applies the
+**pullback** (cotangent map, contravariant). Both are morphisms in the
+appropriate (co)tangent category.
+
+## 21.5 Functors → Structure-Preserving Maps
+
+Operations that map one algebraic structure to another structurally are
+**functors**. Examples in this codebase:
+
+| Functor | Domain category | Codomain category | What it does |
+|---|---|---|---|
+| `Dual<_>` | **Ring** | **Ring** | Lifts a ring to its dual-number extension |
+| `Gradient<_>` | **VectorSpace** | **VectorSpace** | Maps a space to its cotangent space |
+| `Checkpoint<_>` | **Differentiable** | **Differentiable** | Adds recompute boundary without changing semantics |
+| `StopGrad<_>` | **Differentiable** | **Differentiable** | Sets the derivative to zero morphism |
+
+A functor must preserve composition: `F(g ∘ f) = F(g) ∘ F(f)`. When
+implementing a new functor-like wrapper, verify this law in a `proptest` test.
+
+## 21.6 Implications for Contributors
+
+This structure has direct practical implications:
+
+- **New operations** must be expressible as morphisms (differentiable maps)
+  or functors. If they cannot be, the algebraic structure is incomplete —
+  extend it, don't bypass it.
+- **Composition** is always valid when types match. If composition fails to
+  typecheck, the types are wrong — fix the types, not the composition.
+- **Autodiff correctness** reduces to chain-rule correctness in this category.
+  A gradient bug is a morphism composition bug — reason about it categorically.
+- **The prohibited list** (§16) items are precisely the things that break
+  this categorical structure: runtime tapes replace morphisms with dynamic
+  dispatch; implicit broadcasting introduces morphisms that are not
+  type-visible; full Hessians mistake a rank-2 tensor for a linear map.
+
+---
+
+# 22. Compile-Time Budget Policy
+
+Generic algebra systems compound compile times aggressively. Monomorphization
+is the performance strategy — but unconstrained, it makes the codebase
+unmaintainable. This section formalizes the governance rules stated informally
+in §6.9.
+
+## 22.1 Regression Threshold
+
+**A compile-time regression of more than 10% on the full workspace build
+(`cargo build --workspace`) must be investigated and resolved before merge.**
+
+The 10% threshold applies to:
+- Clean builds (`cargo build --workspace`)
+- Incremental builds after a change to `algebra/`
+- Test compilation (`cargo test --workspace --no-run`)
+
+Regressions between 5% and 10% must be noted in the PR description with
+an explanation. Regressions under 5% are advisory.
+
+## 22.2 Measuring Compile Time
+
+Use `cargo build --timings` to identify which crates and generic
+instantiations dominate compile time:
+
+```bash
+cargo build --workspace --timings
+# Generates target/cargo-timings/cargo-timing.html
+# Inspect for codegen units that dominate wall time
+```
+
+For fine-grained monomorphization analysis:
+```bash
+RUSTFLAGS="-Z print-mono-items=eager" cargo +nightly build 2>&1 | grep "MONO_ITEM"
+```
+
+Before submitting any PR that adds new generic parameters or blanket impls,
+run both and confirm no significant regressions.
+
+## 22.3 Rules That Govern Compile Time
+
+These are binding rules, not guidelines:
+
+1. **Blanket impls over unconstrained generics are prohibited.** Every blanket
+   impl must have at least one bound that limits the set of types it applies to.
+
+2. **Sealed traits are required for all core `algebra/` traits.** Unsealed
+   traits allow downstream impls that the compiler cannot prune, increasing
+   monomorphization surface.
+
+3. **Nested `Dual` types beyond second order require design review.**
+   `Dual<Dual<T>>` (hyper-dual) is permitted for exact second derivatives.
+   `Dual<Dual<Dual<T>>>` requires an Issue tagged `compile-budget` before use.
+
+4. **New const generic parameters require justification.** Each additional
+   const generic parameter multiplies the monomorphization space. Document
+   the parameter's purpose and why a runtime value is insufficient.
+
+5. **Compile-time regression PRs must include a fix, not just a note.**
+   A PR that regresses compile time by >10% will not be merged until the
+   regression is resolved, regardless of functional correctness.
+
+## 22.4 Known Expensive Patterns
+
+| Pattern | Risk | Mitigation |
+|---|---|---|
+| `impl<T: Field> Foo for Bar<T>` (no other bounds) | High — instantiates for every `T` | Add bounding traits; seal the trait |
+| Deeply nested associated types (`A::B::C::D`) | Medium — forces solver work at every use site | Introduce intermediate type aliases |
+| `where [(); RANK_A + RANK_B]:` const bounds | Medium — combinatorial on rank values | Limit to ops where rank arithmetic is genuinely needed |
+| `Dual<Dual<T>>` in non-hyper-dual contexts | High — doubles monomorphization depth | Restrict to §7.4 hyper-dual use cases only |
+
+---
+
+# 23. Benchmarking Policy
+
+`backend/` has no formal benchmark suite at the time of this writing. This
+section establishes the policy that new kernel work must follow.
+
+## 23.1 Criterion Benchmarks Are Mandatory for Backend Kernels
+
+Every non-trivial kernel added to `backend/` Layer 2 must have a corresponding
+`criterion` benchmark before the PR is merged. "Non-trivial" means any kernel
+that:
+- Performs a BLAS call
+- Uses SIMD intrinsics
+- Implements a reduction (sum, max, norm, etc.)
+- Is a fused operation (see §19)
+
+Benchmarks live in `backend/benches/`. Each benchmark file corresponds to a
+kernel family (e.g., `benches/matmul.rs`, `benches/reduce.rs`).
+
+## 23.2 Benchmark Structure
+
+Use `criterion`'s standard group structure. Always bench across multiple
+input sizes — a kernel that is fast at small sizes and slow at large sizes
+(or vice versa) must have both visible:
+
+```rust
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+
+fn bench_matmul(c: &mut Criterion) {
+    let mut group = c.benchmark_group("matmul");
+
+    for size in [64usize, 256, 1024, 4096] {
+        group.bench_with_input(
+            BenchmarkId::new("cpu_f64", size),
+            &size,
+            |b, &n| {
+                let a = CpuBackend::alloc_random::<f64>([n, n]);
+                let b_mat = CpuBackend::alloc_random::<f64>([n, n]);
+                b.iter(|| black_box(CpuBackend::matmul(&a, &b_mat)))
+            },
+        );
+    }
+
+    group.finish();
+}
+
+criterion_group!(benches, bench_matmul);
+criterion_main!(benches);
+```
+
+## 23.3 Performance Claims Require Benchmark Evidence
+
+Do not make performance claims in PR descriptions, doc comments, or
+`// STABILITY:` annotations without a benchmark result to support them.
+"This is faster because SIMD" is not evidence. A `criterion` output
+showing throughput improvement across representative sizes is.
+
+## 23.4 Regression Tracking
+
+Benchmark baselines are committed to `backend/benches/baselines/` using
+`cargo criterion --save-baseline <name>`. PRs that modify existing kernels
+must run:
+
+```bash
+cargo criterion --baseline main --bench <kernel>
+```
+
+and include the comparison output in the PR description. A regression of
+more than 5% in any benchmarked operation requires justification before merge.
+
+## 23.5 What Benchmarks Do Not Prove
+
+Benchmarks measure throughput on the benchmarking machine. They do not
+verify correctness, numerical stability, or behavior on other hardware
+(especially regarding SIMD availability, cache sizes, or denormal handling).
+Benchmark results accompany tests — they never replace them.
+
+---
+
+# 24. Known Limitations and Active Rough Edges
 
 **Read this before hitting a wall and assuming the codebase is broken.**
 
@@ -991,9 +1460,9 @@ These are known issues that are deferred — not bugs to fix unsolicited:
   These patterns are intentionally kept and are not to be worked around by
   cloning — they will compile on stable once Polonius stabilizes.
 
-- **No benchmarks yet:** `backend/` has no formal benchmark suite. Performance
-  claims cannot be verified. Do not make performance-motivated changes without
-  first adding a benchmark that proves the claim.
+- **No benchmark baselines yet:** `backend/benches/baselines/` is empty.
+  The first PR to add a kernel benchmark should also commit the initial
+  baseline using `cargo criterion --save-baseline main`.
 
 - **`algebra/` trait hierarchy is incomplete:** Several standard algebraic
   structures (Lie algebras, Hilbert spaces, manifolds) are not yet represented.
@@ -1058,12 +1527,16 @@ Boundaries are inviolable.
 | `R-013` | **P2** | Non-smooth op needs `// NON-DIFFERENTIABLE:` | ⚠️ grep function names | Catches names, not all usages |
 | `R-014` | **P2** | Nightly feature use needs `// MGCA:` comment | ⚠️ grep feature gate names | N/A |
 | `R-015` | **P2** | Associated type selection follows §6.10 policy (regular vs GAT) | 🔴 Manual only | New lifetime on `Scalar`/`Gradient`/`Shape`/`Backend`/`Derivative` is a violation; missing lifetime on `View`/`Iter`/`Slice` is a violation |
-| `R-016` | **P3** | Commit message follows `<crate>: <description>` format | 🔴 Manual only | Advisory |
-| `R-017` | **P3** | Draft PR opened within 1 day of starting work | 🔴 Manual only | Advisory |
+| `R-016` | **P1** | Kernel fusion only in `backend/` Layer 2 | ⚠️ grep for fusion patterns in wrong crates (partial) | Semantic fusion (not named `fuse`) evades grep — human must verify new multi-op types in `algebra/`/`tensor/` |
+| `R-017` | **P2** | Shape arithmetic lives only in `tensor::shape` | ⚠️ grep `shape` arithmetic outside `tensor/shape/` (partial) | N/A |
+| `R-018` | **P2** | Compile-time regression >10% investigated before merge | ⚠️ `cargo build --timings` comparison | No automated gate — requires contributor to run and report |
+| `R-019` | **P2** | New backend kernels have `criterion` benchmark | 🔴 Manual only | N/A |
+| `R-020` | **P3** | Commit message follows `<crate>: <description>` format | 🔴 Manual only | Advisory |
+| `R-021` | **P3** | Draft PR opened within 1 day of starting work | 🔴 Manual only | Advisory |
 
 **P0 count: 4 rules fully automated.**  
-**P1 count: 4 rules require human review — they block merge but cannot be scripted.**  
-**P2 count: 7 rules are quality flags — they do not block merge.**  
+**P1 count: 5 rules require human review — they block merge but cannot be scripted.**  
+**P2 count: 9 rules are quality flags — they do not block merge.**  
 **P3 count: 2 advisory rules — noted but not enforced.**
 
 ---
@@ -1084,11 +1557,6 @@ echo "P0: auto-block | P1: human-review block | P2: advisory flag"
 echo ""
 
 # ── P0: R-001 — Crate DAG ─────────────────────────────────────────────────
-# algebra/: zero workspace deps
-# tensor/: depends on algebra/ and backend/ (trait only — never concrete types)
-# backend/: depends on algebra/; Layer 2 impls depend on Layer 1 trait in same crate
-# Caveat: naming concrete types (CpuBackend) in tensor/ without an import; Cargo.toml aliasing
-
 if grep -rn "^use tensor::\|^use backend::" algebra/src/ 2>/dev/null; then
     echo "❌ P0 / R-001: algebra/ imports tensor/ or backend/ — forbidden"
     FAILED=1
@@ -1100,11 +1568,10 @@ if grep -rn "CpuBackend\|CudaBackend\|WasmBackend" tensor/src/ 2>/dev/null; then
 fi
 
 # ── P0: R-003 — Undocumented unsafe ───────────────────────────────────────
-# clippy implements 3-line look-behind correctly; do NOT replace with grep
-cargo clippy --workspace -- -D clippy::undocumented_unsafe_blocks 2>&1     || { echo "❌ P0 / R-003: Undocumented unsafe block"; FAILED=1; }
+cargo clippy --workspace -- -D clippy::undocumented_unsafe_blocks 2>&1 \
+    || { echo "❌ P0 / R-003: Undocumented unsafe block"; FAILED=1; }
 
 # ── P0: R-007 — Hidden RNG ────────────────────────────────────────────────
-# Import-level only; method-only usage escapes (see §A.4)
 if grep -rn "rand::" algebra/src/ tensor/src/ 2>/dev/null; then
     echo "❌ P0 / R-007: RNG import in algebra/ or tensor/"
     FAILED=1
@@ -1117,34 +1584,55 @@ if grep -rn "Box<dyn" algebra/src/ tensor/src/ 2>/dev/null; then
 fi
 
 # ── P1: R-002 — Runtime tape (partial) ────────────────────────────────────
-# Renamed types evade this — human must verify any new struct definitions
 if grep -rn "Vec<Box<dyn" algebra/src/ tensor/src/ 2>/dev/null; then
     echo "⛔ P1 / R-002: Possible runtime tape — HUMAN REVIEW REQUIRED before merge"
+    FAILED=1
+fi
+
+# ── P1: R-016 — Fusion outside backend/ (partial) ─────────────────────────
+if grep -rn "fuse\|fused_\|FusedOp\|FusionKernel" algebra/src/ tensor/src/ 2>/dev/null; then
+    echo "⛔ P1 / R-016: Possible kernel fusion in algebra/ or tensor/ — HUMAN REVIEW REQUIRED"
+    echo "   Fusion is permitted only in backend/ Layer 2 (see §19)"
     FAILED=1
 fi
 
 # ── Standard CI gates ─────────────────────────────────────────────────────
 cargo test --workspace        || { echo "❌ Tests failed"; FAILED=1; }
 cargo fmt --check             || { echo "❌ Format check failed"; FAILED=1; }
-cargo doc --workspace --no-deps 2>&1 | grep "^error"     && { echo "❌ Doc build errors"; FAILED=1; } || true
+cargo doc --workspace --no-deps 2>&1 | grep "^error" \
+    && { echo "❌ Doc build errors"; FAILED=1; } || true
 
 # ── P2: Advisory flags (do not exit 1) ────────────────────────────────────
 echo ""
 echo "=== P2 Advisory Flags ==="
 
 # R-010: Gradient check tests
-cargo test grad_check --workspace 2>&1     || echo "⚠️  P2 / R-010: grad_check tests missing or failing — add before merge"
+cargo test grad_check --workspace 2>&1 \
+    || echo "⚠️  P2 / R-010: grad_check tests missing or failing — add before merge"
 
-# R-012: Stability annotations — word-boundary pattern to minimise false positives
-# Matches exp(, ln(, sqrt(, log( as calls — not identifiers like 'expect', 'export'
-if grep -rPn '\b(exp|ln|log|sqrt)\(' algebra/src/ tensor/src/ 2>/dev/null     | grep -v "// STABILITY:" | grep -v "exp_m1\|ln_1p"; then
+# R-012: Stability annotations
+if grep -rPn '\b(exp|ln|log|sqrt)\(' algebra/src/ tensor/src/ 2>/dev/null \
+    | grep -v "// STABILITY:" | grep -v "exp_m1\|ln_1p"; then
     echo "⚠️  P2 / R-012: Numerically sensitive op without // STABILITY: comment"
 fi
 
 # R-013: Non-smooth ops
-if grep -rn "\brelu\|\babs\|\bsign\b" algebra/src/ tensor/src/ 2>/dev/null     | grep -v "// NON-DIFFERENTIABLE:"; then
+if grep -rn "\brelu\|\babs\|\bsign\b" algebra/src/ tensor/src/ 2>/dev/null \
+    | grep -v "// NON-DIFFERENTIABLE:"; then
     echo "⚠️  P2 / R-013: Non-smooth op without // NON-DIFFERENTIABLE: annotation"
 fi
+
+# R-017: Shape arithmetic outside tensor::shape
+if grep -rPn '\bshape\b.*[+\-\*]|\brank\b.*[+\-\*]' tensor/src/ 2>/dev/null \
+    | grep -v "tensor/src/shape"; then
+    echo "⚠️  P2 / R-017: Shape arithmetic outside tensor::shape — consolidate in §20 module"
+fi
+
+# R-018: Compile-time budget (advisory reminder — no automated gate)
+echo "⚠️  P2 / R-018: Run 'cargo build --workspace --timings' and confirm <10% regression"
+
+# R-019: Criterion benchmarks for new backend kernels (advisory reminder)
+echo "⚠️  P2 / R-019: New backend/ kernels require criterion benchmark in backend/benches/"
 
 # ── Final verdict ─────────────────────────────────────────────────────────
 echo ""
@@ -1156,14 +1644,12 @@ if [ $FAILED -eq 1 ]; then
 fi
 
 echo "✅ P0 rules passed. P2/P3 flags above are advisory."
-echo "   Manually verify P1 rules: R-002, R-004, R-005, R-006."
+echo "   Manually verify P1 rules: R-002, R-004, R-005, R-006, R-016."
 ```
 
 ---
 
 ## A.3 Known Detection Gaps
-
-Automation has limits. These gaps must be compensated by human PR review:
 
 | Rule | Gap | What Escapes | Human Mitigation |
 |---|---|---|---|
@@ -1173,6 +1659,8 @@ Automation has limits. These gaps must be compensated by human PR review:
 | `R-002` | Renamed types | `struct Graph { ops: Vec<Box<dyn Backward>> }` | Review all new `struct` definitions in `algebra/`/`tensor/` |
 | `R-007` | Method-only RNG | `thread_rng().gen::<f64>()` without `use rand::` | Flag any call containing `rng`, `random`, `gen` in `algebra/`/`tensor/` |
 | `R-012` | False positives | `explanation`, `expect`, `export` contain `exp` | Script uses `\bexp\(` word-boundary — review flagged lines |
+| `R-016` | Semantic fusion | Multi-op composite type not named `fuse*` | Review any new struct in `algebra/`/`tensor/` that wraps two or more operation types |
+| `R-017` | Shape logic in op impls | Inline `a_rank + b_rank - 2*k` in `contract()` body | Any shape arithmetic outside `tensor/src/shape/` is a violation — search for arithmetic on `rank`/`shape` variables |
 
 ---
 
@@ -1183,10 +1671,10 @@ When encountering a rule violation, apply this decision tree:
 ```
 Is the violation detected by the CI script?
 ├── YES → CI will block the PR automatically (P0). Fix before pushing.
-└── NO  → Is it in the P1 list (R-002, R-004, R-005, R-006)?
+└── NO  → Is it in the P1 list (R-002, R-004, R-005, R-006, R-016)?
            ├── YES → Do NOT proceed. Open a GitHub Issue tagged `architecture`.
            │         A human architect must review before merge.
-           └── NO  → Is it in the P2 list (R-009 through R-015)?
+           └── NO  → Is it in the P2 list (R-009 through R-019)?
                      ├── YES → Note it in the PR description. Does not block merge.
                      └── NO  → P3 advisory. Note if convenient.
 ```
